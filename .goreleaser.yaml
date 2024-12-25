@@ -1,0 +1,11 @@
+builds:
+- env:
+  - CGO_ENABLED=1
+  goos:
+  - linux
+  goarch:
+  - amd64
+  ldflags:
+  - -s -w
+  - -X github.com/mhersson/mpls/cmd.Version={{ .Tag }}
+  - -X github.com/mhersson/mpls/internal/mpls.Version={{ .Tag }}

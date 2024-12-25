@@ -1,0 +1,30 @@
+name: Release Go project
+
+on:
+  push:
+    tags:
+    - "*" # triggers only if push new tag version
+
+jobs:
+  build:
+    name: GoReleaser build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: stable
+
+    - name: Run GoReleaser
+      uses: goreleaser/goreleaser-action@v5
+      with:
+        version: latest
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
