@@ -1,5 +1,5 @@
-##
-# sncli Makefile
+#
+# Makefile: Markdown Preview Language Server
 #
 
 SHELL=bash
@@ -21,6 +21,7 @@ LDFLAGS="-s -w \
 -X github.com/mhersson/mpls/internal/mpls.Version=$(VERSION)"
 
 export CGO_ENABLED=1
+
 all: build
 
 ##@ General

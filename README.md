@@ -1,9 +1,7 @@
-Markdown Preview Language Server
-================================
+# Markdown Preview Language Server
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mhersson/mpls)](https://goreportcard.com/report/github.com/mhersson/mpls)
-
 
 Built using [GLSP](https://github.com/tliron/glsp) and [Goldmark](https://github.com/yuin/goldmark),
 and heavily inspired by [mdpls](https://github.com/euclio/mdpls)
@@ -16,7 +14,7 @@ enhance your Markdown editing experience. With live preview in the browser,
 you're writing documentation or creating notes, `mpls` provides a seamless and
 interactive environment.
 
-Built with terminal editors in mind, such as Vim and Helix, which do not have
+Built with terminal editors in mind, such as (Neo)vim and Helix, which do not have
 built-in Markdown rendering, `mpls` bridges the gap by providing a live preview
 feature that works alongside these editors. Additionally, `mpls` is compatible
 with any editor that supports the Language Server Protocol (LSP), making it a
@@ -39,6 +37,9 @@ experience:
 
 - Github Flavored Markdown: Goldmark's built in GFM extension ensures Table,
   Strikethrough, Linkify and TaskList elements are displayed correctly.
+- Syntax highlighting: The
+  [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
+  syntax-highlighting to the fenced code blocks.
 - Image Rendering: The [img64](https://github.com/tenkoh/goldmark-img64)
   extension allows for seamless integration of images within your Markdown
   files.
@@ -54,85 +55,112 @@ generating diagrams from text definitions.
 
 ## Install
 
-The esiest way to install `mpls` is to download one of the pre-built
+The easiest way to install `mpls` is to download one of the prebuilt
 release binaries. You can find the latest releases on the [Releases
 page](https://github.com/mhersson/mpls/releases).
 
 > `mpls` uses CGO, which complicates cross-compiling. Therefore, for now, there
 > are only prebuilt binaries available for Linux/amd64.
 
-1. Download the appropriate binary for your operating system.
-2. Copy the downloaded binary to a directory that is in your system's PATH. For example:
+1. Download the appropriate tar.gz file for your operating system.
+2. Extract the contents of the tar.gz file. You can do this using the following
+   command in your terminal:
 
    ```bash
-   cp mpls /usr/local/bin/
+   tar -xzf mpls_<version>_linux_amd64.tar.gz
+   ```
+
+   (Replace `<version>` with the actual version of the release.)
+3. Copy the extracted binary to a directory that is in your system's PATH. For example:
+
+   ```bash
+   sudo cp mpls /usr/local/bin/
    ```
 
 <details>
 <summary>Build From Source</summary>
 
-If you prefer to build from source, follow these steps:
+If you prefer to build from source or if no prebuilt binaries are available for
+your architecture, follow these steps:
 
-1. **Clone the repository** (if you haven't already):
+1. **Clone the repository**:
 
-   ```bash
-   git clone https://github.com/mhersson/mpls.git
-   cd mpls
-   ```
+    ```bash
+    git clone https://github.com/mhersson/mpls.git
+    cd mpls
+    ```
 
 2. **Build the project**:
 
-   You can build the project using the following command:
+    You can build the project using the following command:
 
-   ```bash
-   make build
-   ```
+    ```bash
+    make build
+    ```
 
-   This will compile the source code and create an executable.
+    This will compile the source code and create an executable.
 
 3. **Install the executable**:
 
-   You have two options to install the executable:
+    You have two options to install the executable:
 
-   - **Option 1: Copy the executable to your PATH**:
+    - **Option 1: Copy the executable to your PATH**:
 
-     After building, you can manually copy the executable to a directory that is in your system's PATH. For example:
+      After building, you can manually copy the executable to a directory that is in your system's PATH. For example:
 
-     ```bash
-     cp mpls /usr/local/bin/
-     ```
+      ```bash
+      sudo cp mpls /usr/local/bin/
+      ```
 
-   - **Option 2: Use `make install` if you are using GOPATH**:
+    - **Option 2: Use `make install` if you are using GOPATH**:
 
-     If the GOPATH is in your PATH, you can run:
+      If the GOPATH is in your PATH, you can run:
 
-     ```bash
-     make install
-     ```
+      ```bash
+      make install
+      ```
 
-     This will install the executable to your `$GOPATH/bin` directory.
+      This will install the executable to your `$GOPATH/bin` directory.
+
 </details>
 
 **Verify the installation**:
 
-   After installation, you can verify that `mpls` is installed correctly by running:
+After installation, you can verify that `mpls` is installed correctly by running:
 
-   ```bash
-   mpls --version
-   ```
+```bash
+mpls --version
+```
 
-   This should display the version of the `mpls` executable.
+This should display the version of the `mpls` executable.
+
+## Command-Line Options
+
+The following options can be used when starting `mpls`:
+
+| Flag           | Description |
+|----------------|-------------|
+| `--full-sync`  | Sync the entire document for every change being made. **(1)** |
+| `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
+| `--version`    | Displays the mpls version. |
+| `--help`       | Displays help information about the available options. |
+
+ 1. Has a small impact on performance, but makes sure that e.g wrapping
+    changes applied in the editor, like `reflow` in Helix, does not affect the preview.
+ 2. The goldmark-highlighting extension use
+    [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
+    all available styles in Chroma are available here.
+
 
 ## Configuration examples
 
 **Helix**
 
-Configured to run alongside marksman.
-
 <details>
 <summary>languages.toml</summary>
 
 ```toml
+# Configured to run alongside marksman.
 [[language]]
 auto-format = true
 language-servers = ["marksman", "mpls"]
@@ -141,8 +169,55 @@ name = "markdown"
 [language-server.mpls]
 command = "mpls"
 ```
+
 </details>
 
+**Neovim (LazyVim)**
+
+<details>
+<summary>lua/plugins/mpls.lua</summary>
+
+```lua
+return {
+  {
+    "neovim/nvim-lspconfig",
+    opts = {
+      servers = {
+        mpls = {},
+      },
+      setup = {
+        mpls = function(_, opts)
+          local lspconfig = require("lspconfig")
+          local configs = require("lspconfig.configs")
+          local util = require("lspconfig.util")
+
+          if not configs.mpls then
+            configs.mpls = {
+              default_config = {
+                cmd = {"mpls"},
+                filetypes = {"markdown"},
+                single_file_support = true,
+                root_dir = require("lspconfig").util.find_git_ancestor,
+                settings = {},
+              },
+              docs = {
+                description = [[https://github.com/mhersson/mpls
+
+Markdown Preview Language Server (MPLS) is a language server that provides
+live preview of markdown files in your browser while you edit them in your favorite editor.
+                ]],
+              },
+            }
+          end
+          lspconfig.mpls.setup(opts)
+        end,
+      },
+    },
+  },
+}
+```
+
+</details>
 
 **Doom-Emacs with lsp-mode**
 
@@ -185,4 +260,5 @@ command = "mpls"
                     :server-id 'mpls)))
 
 ```
+
 </details>

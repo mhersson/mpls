@@ -1,7 +1,6 @@
 package mpls
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -15,11 +14,11 @@ var previewServer *previewserver.Server
 var document string
 var currentURI string
 
-func TextDocumentDidOpen(_ *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
+func TextDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	currentURI = params.TextDocument.URI
 	doc := params.TextDocument
 
-	fmt.Fprintf(os.Stderr, "TextDocumentDidOpen: %s\n", doc.URI)
+	_ = protocol.Trace(context, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+doc.URI))
 
 	document = doc.Text
 
@@ -29,11 +28,12 @@ func TextDocumentDidOpen(_ *glsp.Context, params *protocol.DidOpenTextDocumentPa
 	return nil
 }
 
-func TextDocumentDidChange(_ *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
+func TextDocumentDidChange(context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
 	for _, change := range params.ContentChanges {
 		if c, ok := change.(protocol.TextDocumentContentChangeEvent); ok {
 			if params.TextDocument.URI != currentURI {
-				fmt.Fprintf(os.Stderr, "TextDocumentUriDidChange - switching document: %s\n", params.TextDocument.URI)
+				_ = protocol.Trace(context, protocol.MessageTypeInfo,
+					log("TextDocumentUriDidChange - switching document: "+params.TextDocument.URI))
 				document = string(loadDocument(params.TextDocument.URI))
 				currentURI = params.TextDocument.URI
 			}

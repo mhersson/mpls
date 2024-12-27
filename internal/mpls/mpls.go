@@ -15,7 +15,12 @@ import (
 
 const lsName = "Markdown Preview Language Server"
 
+var TextDocumentUseFullSync bool
 var Version string
+
+func log(message string) string {
+	return time.Now().Local().Format("2006-01-02 15:04:05") + " " + message
+}
 
 func Run() {
 	previewServer = previewserver.New()
@@ -28,9 +33,14 @@ func Run() {
 	_ = lspServer.RunStdio()
 }
 
-func initialize(_ *glsp.Context, _ *protocol.InitializeParams) (any, error) {
+func initialize(context *glsp.Context, _ *protocol.InitializeParams) (any, error) {
+	protocol.SetTraceValue("message")
+	_ = protocol.Trace(context, protocol.MessageTypeInfo, log("Initializing "+lsName))
+
 	capabilities := Handler.CreateServerCapabilities()
-	// capabilities.TextDocumentSync = protocol.TextDocumentSyncKindFull
+	if TextDocumentUseFullSync {
+		capabilities.TextDocumentSync = protocol.TextDocumentSyncKindFull
+	}
 
 	return protocol.InitializeResult{
 		Capabilities: capabilities,

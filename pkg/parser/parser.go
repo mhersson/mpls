@@ -12,6 +12,8 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 )
 
+var CodeHighlightingStyle string
+
 func HTML(document string) []byte {
 	source := []byte(document)
 
@@ -19,7 +21,7 @@ func HTML(document string) []byte {
 		goldmark.WithExtensions(
 			extension.GFM,
 			highlighting.NewHighlighting(
-				highlighting.WithStyle("catppuccin-mocha"),
+				highlighting.WithStyle(CodeHighlightingStyle),
 			),
 			meta.Meta,
 			img64.Img64,

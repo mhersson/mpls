@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/mhersson/mpls/internal/mpls"
+	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/spf13/cobra"
 )
 
@@ -25,4 +26,9 @@ func Execute() {
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+func init() {
+	command.Flags().BoolVar(&mpls.TextDocumentUseFullSync, "full-sync", false, "Tell lsp client to use full sync")
+	command.Flags().StringVar(&parser.CodeHighlightingStyle, "code-style", "catppuccin-mocha", "Higlighting style for code blocks")
 }
