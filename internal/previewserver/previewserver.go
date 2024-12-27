@@ -39,6 +39,10 @@ type Server struct {
 	Port           int
 }
 
+func logTime() string {
+	return time.Now().Local().Format("2006-01-02 15:04:05")
+}
+
 func New() *Server {
 	port := rand.Intn(65535-10000) + 10000 // nolint:gosec
 
@@ -78,7 +82,7 @@ func (s *Server) Start() {
 
 	go func() {
 		if err := s.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("Error starting server: %s\n", err)
+			fmt.Printf("%s error starting server: %s\n", logTime(), err)
 		}
 	}()
 
@@ -94,7 +98,7 @@ func (s *Server) Update(newContent []byte) {
 	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		fmt.Println("Error sending message:", err)
+		fmt.Fprintf(os.Stderr, "%s error connecting to server: %v\n", logTime(), err)
 
 		return
 	}
@@ -103,7 +107,7 @@ func (s *Server) Update(newContent []byte) {
 	// Send a message to the server
 	err = conn.WriteMessage(websocket.TextMessage, newContent)
 	if err != nil {
-		fmt.Println("Error sending message:", err)
+		fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
 
 		return
 	}
@@ -111,18 +115,14 @@ func (s *Server) Update(newContent []byte) {
 
 // Stop gracefully shuts down the server.
 func (s *Server) Stop() {
-	fmt.Println("\nShutting down server...")
-
 	// Create a context with a timeout for the shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Attempt to gracefully shut down the server
 	if err := s.Server.Shutdown(ctx); err != nil {
-		fmt.Printf("Error shutting down server: %s\n", err)
+		fmt.Fprintf(os.Stderr, "%s error shutting down server: %v\n", logTime(), err)
 	}
-
-	fmt.Println("Server shut down gracefully.")
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +135,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := wsupgrader.Upgrade(w, r, nil)
 	if err != nil {
 		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
-		fmt.Println("Error while upgrading connection:", err)
+		fmt.Fprintf(os.Stderr, "%s error could not open websocket connection: %v\n", logTime(), err)
 
 		return
 	}
@@ -154,7 +154,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			fmt.Println("Error while reading message:", err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				fmt.Fprintf(os.Stderr, "%s error while reading message: %v\n", logTime(), err)
+			}
 
 			break
 		}
@@ -168,8 +170,8 @@ func handleMessages() {
 		clientsMutex.Lock()
 		for client := range clients {
 			err := client.WriteMessage(websocket.TextMessage, msg)
-			if err != nil {
-				fmt.Println("Error while writing message:", err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				fmt.Fprintf(os.Stderr, "%s error while writing message: %v\n", logTime(), err)
 				client.Close()
 				delete(clients, client)
 			}
@@ -191,6 +193,8 @@ func openbrowser(url string) error {
 	}
 
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s error opening browser: %v\n", logTime(), err)
+
 		return err
 	}
 
