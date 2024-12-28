@@ -3,6 +3,7 @@ package previewserver
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -94,7 +95,7 @@ func (s *Server) Start() {
 }
 
 // Update updates the current HTML content.
-func (s *Server) Update(newContent []byte) {
+func (s *Server) Update(newContent string, section string) {
 	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -104,8 +105,21 @@ func (s *Server) Update(newContent []byte) {
 	}
 	defer conn.Close()
 
+	type Event struct {
+		HTML    string
+		Section string
+	}
+
+	e := Event{HTML: newContent, Section: section}
+	eventJSON, err := json.Marshal(e)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
+
+		return
+	}
+
 	// Send a message to the server
-	err = conn.WriteMessage(websocket.TextMessage, newContent)
+	err = conn.WriteMessage(websocket.TextMessage, eventJSON)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
 

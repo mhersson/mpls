@@ -9,12 +9,13 @@ import (
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	meta "github.com/yuin/goldmark-meta"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 )
 
 var CodeHighlightingStyle string
 
-func HTML(document string) []byte {
+func HTML(document string) string {
 	source := []byte(document)
 
 	markdown := goldmark.New(
@@ -28,6 +29,9 @@ func HTML(document string) []byte {
 			&katex.Extender{},
 		),
 		goldmark.WithRendererOptions(html.WithUnsafe()),
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+		),
 	)
 
 	var buf bytes.Buffer
@@ -36,5 +40,5 @@ func HTML(document string) []byte {
 		panic(err)
 	}
 
-	return buf.Bytes()
+	return buf.String()
 }
