@@ -20,6 +20,8 @@ feature that works alongside these editors. Additionally, `mpls` is compatible
 with any editor that supports the Language Server Protocol (LSP), making it a
 versatile tool for Markdown editing across various platforms.
 
+![demo](screenshots/demo.gif)
+
 ## Features
 
 - Live Preview: Instantly see your Markdown changes reflected in the browser.
