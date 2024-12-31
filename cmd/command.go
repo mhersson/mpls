@@ -4,12 +4,14 @@ import (
 	"os"
 
 	"github.com/mhersson/mpls/internal/mpls"
+	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/spf13/cobra"
 )
 
 var (
 	Version string
+	noAuto  bool
 )
 
 var command = &cobra.Command{
@@ -17,6 +19,7 @@ var command = &cobra.Command{
 	Short:   "Markdown Preview Language Server",
 	Version: Version,
 	Run: func(_ *cobra.Command, _ []string) {
+		previewserver.OpenBrowserOnStartup = !noAuto
 		mpls.Run()
 	},
 }
@@ -29,6 +32,7 @@ func Execute() {
 }
 
 func init() {
-	command.Flags().BoolVar(&mpls.TextDocumentUseFullSync, "full-sync", false, "Tell lsp client to use full sync")
+	command.Flags().BoolVar(&noAuto, "no-auto", false, "Don't open preview automatically")
+	command.Flags().BoolVar(&mpls.TextDocumentUseFullSync, "full-sync", false, "Sync entire document for every change")
 	command.Flags().StringVar(&parser.CodeHighlightingStyle, "code-style", "catppuccin-mocha", "Higlighting style for code blocks")
 }

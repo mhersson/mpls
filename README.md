@@ -140,16 +140,20 @@ The following options can be used when starting `mpls`:
 
 | Flag           | Description |
 |----------------|-------------|
-| `--full-sync`  | Sync the entire document for every change being made. **(1)** |
-| `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
+| `--no-auto`    | Don't open preview automatically |
+| `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(1)** |
+| `--full-sync`  | Sync the entire document for every change being made. **(2)** |
 | `--version`    | Displays the mpls version. |
 | `--help`       | Displays help information about the available options. |
 
- 1. Has a small impact on performance, but makes sure that e.g wrapping
-    changes applied in the editor, like `reflow` in Helix, does not affect the preview.
- 2. The goldmark-highlighting extension use
+ 1. The goldmark-highlighting extension use
     [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
-    all available styles in Chroma are available here.
+    all available styles in Chroma are available here. Default style is
+    `catppuccin-mocha`.
+ 2. Has a small impact on performance, but makes sure that commands like
+    `reflow` in Helix, does not impact the accuracy of the preview.
+    Additionally, it disables `mpls'` efforts to scroll to the closest section
+    header when editing.
 
 
 ## Configuration examples

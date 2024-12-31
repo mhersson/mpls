@@ -41,6 +41,7 @@ func initialize(context *glsp.Context, _ *protocol.InitializeParams) (any, error
 	if TextDocumentUseFullSync {
 		capabilities.TextDocumentSync = protocol.TextDocumentSyncKindFull
 	}
+	capabilities.ExecuteCommandProvider.Commands = []string{"open-preview"}
 
 	return protocol.InitializeResult{
 		Capabilities: capabilities,

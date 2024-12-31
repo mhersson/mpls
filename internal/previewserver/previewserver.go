@@ -18,6 +18,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var OpenBrowserOnStartup bool
+
 //go:embed web/index.html
 var indexHTML string
 
@@ -87,7 +89,9 @@ func (s *Server) Start() {
 		}
 	}()
 
-	_ = openbrowser(fmt.Sprintf("http://localhost:%d", s.Port))
+	if OpenBrowserOnStartup {
+		_ = Openbrowser(fmt.Sprintf("http://localhost:%d", s.Port))
+	}
 
 	// Wait for interrupt signal
 	<-stopChan
@@ -194,7 +198,7 @@ func handleMessages() {
 	}
 }
 
-func openbrowser(url string) error {
+func Openbrowser(url string) error {
 	var err error
 
 	switch runtime.GOOS {
