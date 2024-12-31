@@ -239,6 +239,13 @@ live preview of markdown files in your browser while you edit them in your favor
     :group 'lsp-mode
     :link '(url-link "https://github.com/mhersson/mpls"))
 
+  (defun lsp-mpls-open-preview ()
+    "Open preview of current buffer"
+    (interactive)
+    (lsp-request
+     "workspace/executeCommand"
+     (list :command "open-preview")))
+
   (defcustom lsp-mpls-server-command "mpls"
     "The binary (or full path to binary) which executes the server."
     :type 'string
