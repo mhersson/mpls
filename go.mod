@@ -12,6 +12,7 @@ require (
 	github.com/yuin/goldmark v1.7.8
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	github.com/yuin/goldmark-meta v1.1.0
+	go.abhg.dev/goldmark/wikilink v0.5.0
 )
 
 require (

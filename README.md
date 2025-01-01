@@ -37,6 +37,7 @@ making it an ideal choice for `mpls`.
 `mpls` utilizes several of Goldmark's extensions to enhance the Markdown rendering
 experience:
 
+**Always enabled**
 - Github Flavored Markdown: Goldmark's built in GFM extension ensures Table,
   Strikethrough, Linkify and TaskList elements are displayed correctly.
 - Syntax highlighting: The
@@ -48,6 +49,12 @@ experience:
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
   KaTeX, providing a clear and professional presentation of equations.
+
+**Optional**
+- Wikilinks rendering: The
+  [wikilink](https://github.com/abhinav/goldmark-wikilink) extension enables
+  parsing and rendering of [[wiki]] -style links. (*Note:* image preview does
+  not work for wikilinks)
 
 ### Mermaid
 
@@ -142,9 +149,10 @@ The following options can be used when starting `mpls`:
 
 | Flag           | Description |
 |----------------|-------------|
-| `--no-auto`    | Don't open preview automatically |
 | `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(1)** |
+| `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
 | `--full-sync`  | Sync the entire document for every change being made. **(2)** |
+| `--no-auto`    | Don't open preview automatically |
 | `--version`    | Displays the mpls version. |
 | `--help`       | Displays help information about the available options. |
 

@@ -11,23 +11,33 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"go.abhg.dev/goldmark/wikilink"
 )
 
-var CodeHighlightingStyle string
+var (
+	CodeHighlightingStyle string
+	EnableWikiLinks       bool
+)
 
 func HTML(document string) string {
 	source := []byte(document)
 
-	markdown := goldmark.New(
-		goldmark.WithExtensions(
-			extension.GFM,
-			highlighting.NewHighlighting(
-				highlighting.WithStyle(CodeHighlightingStyle),
-			),
-			meta.Meta,
-			img64.Img64,
-			&katex.Extender{},
+	extensions := []goldmark.Extender{
+		extension.GFM,
+		highlighting.NewHighlighting(
+			highlighting.WithStyle(CodeHighlightingStyle),
 		),
+		meta.Meta,
+		img64.Img64,
+		&katex.Extender{},
+	}
+
+	if EnableWikiLinks {
+		extensions = append(extensions, &wikilink.Extender{})
+	}
+
+	markdown := goldmark.New(
+		goldmark.WithExtensions(extensions...),
 		goldmark.WithRendererOptions(html.WithUnsafe()),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
