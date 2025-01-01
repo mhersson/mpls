@@ -22,8 +22,9 @@ func WorkspaceExecuteCommand(context *glsp.Context, param *protocol.ExecuteComma
 			return nil, err
 		}
 
-		// Give the browser time to open before sending content
-		time.Sleep(700 * time.Millisecond)
+		if err := previewserver.WaitForClients(5 * time.Second); err != nil {
+			return nil, err
+		}
 
 		document = string(loadDocument(currentURI))
 

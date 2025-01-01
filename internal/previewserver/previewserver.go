@@ -46,6 +46,25 @@ func logTime() string {
 	return time.Now().Local().Format("2006-01-02 15:04:05")
 }
 
+func WaitForClients(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for clients to connect")
+		case <-ticker.C:
+			if len(clients) > 0 {
+				return nil
+			}
+		}
+	}
+}
+
 func New() *Server {
 	port := rand.Intn(65535-10000) + 10000 // nolint:gosec
 

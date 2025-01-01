@@ -26,8 +26,6 @@ func Run() {
 	previewServer = previewserver.New()
 	go previewServer.Start()
 
-	time.Sleep(700 * time.Millisecond)
-
 	lspServer := serverPkg.NewServer(&Handler, lsName, false)
 
 	_ = lspServer.RunStdio()

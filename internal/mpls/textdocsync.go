@@ -4,6 +4,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/mhersson/mpls/internal/previewserver"
@@ -23,6 +24,11 @@ func TextDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocu
 	_ = protocol.Trace(context, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+doc.URI))
 
 	document = doc.Text
+
+	// Give the browser 5 seconds to connect
+	if err := previewserver.WaitForClients(5 * time.Second); err != nil {
+		return err
+	}
 
 	html := parser.HTML(document)
 	previewServer.Update(html, "")
