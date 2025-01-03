@@ -18,18 +18,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var OpenBrowserOnStartup bool
-
-//go:embed web/index.html
-var indexHTML string
-
-//go:embed web/styles.css
-var stylesCSS string
-
-//go:embed web/ws.js
-var websocketJS string
-
 var (
+	OpenBrowserOnStartup bool
+	DarkMode             bool
+
+	//go:embed web/index.html
+	indexHTML string
+	//go:embed web/styles.css
+	stylesCSS string
+	//go:embed web/styles-dark.css
+	stylesDarkCSS string
+	//go:embed web/ws.js
+	websocketJS string
+
 	broadcast    = make(chan []byte)
 	clients      = make(map[*websocket.Conn]bool)
 	clientsMutex sync.Mutex
@@ -68,6 +69,16 @@ func WaitForClients(timeout time.Duration) error {
 func New() *Server {
 	port := rand.Intn(65535-10000) + 10000 // nolint:gosec
 
+	styles := "styles.css"
+	mermaidTheme := "default"
+
+	if DarkMode {
+		styles = "styles-dark.css"
+		mermaidTheme = "dark"
+	}
+
+	indexHTML = fmt.Sprintf(indexHTML, styles, mermaidTheme)
+
 	srv := &http.Server{
 		Addr:        fmt.Sprintf(":%d", port),
 		ReadTimeout: time.Second * 5,
@@ -75,7 +86,7 @@ func New() *Server {
 
 	return &Server{
 		Server:         srv,
-		InitialContent: fmt.Sprintf(indexHTML, port),
+		InitialContent: indexHTML,
 		Port:           port,
 	}
 }
@@ -89,6 +100,11 @@ func (s *Server) Start() {
 	http.HandleFunc("/styles.css", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/css")
 		fmt.Fprint(w, stylesCSS)
+	})
+
+	http.HandleFunc("/styles-dark.css", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/css")
+		fmt.Fprint(w, stylesDarkCSS)
 	})
 
 	http.HandleFunc("/ws.js", func(w http.ResponseWriter, _ *http.Request) {

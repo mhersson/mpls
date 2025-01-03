@@ -36,4 +36,5 @@ func init() {
 	command.Flags().BoolVar(&mpls.TextDocumentUseFullSync, "full-sync", false, "Sync entire document for every change")
 	command.Flags().StringVar(&parser.CodeHighlightingStyle, "code-style", "catppuccin-mocha", "Higlighting style for code blocks")
 	command.Flags().BoolVar(&parser.EnableWikiLinks, "enable-wikilinks", false, "Enable [[wiki]] style links")
+	command.Flags().BoolVar(&previewserver.DarkMode, "dark-mode", false, "Enable dark mode")
 }

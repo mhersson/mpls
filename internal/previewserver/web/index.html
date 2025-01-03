@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/%s" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/katex@0.16.18/dist/katex.min.css"
@@ -16,7 +16,7 @@
     <div id="content"></div>
     <script type="module">
       import mermaid from "https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.2.1/mermaid.esm.mjs";
-      mermaid.initialize({ startonload: false });
+      mermaid.initialize({ startonload: false, theme: "%s" });
       window.mermaid = mermaid;
     </script>
     <script src="/ws.js"></script>

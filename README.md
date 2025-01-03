@@ -150,6 +150,7 @@ The following options can be used when starting `mpls`:
 | Flag           | Description |
 |----------------|-------------|
 | `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(1)** |
+| `--dark-mode`  | Enable dark mode |
 | `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
 | `--full-sync`  | Sync the entire document for every change being made. **(2)** |
 | `--no-auto`    | Don't open preview automatically |
