@@ -18,7 +18,8 @@ var command = &cobra.Command{
 	Use:     "mpls",
 	Short:   "Markdown Preview Language Server",
 	Version: Version,
-	Run: func(_ *cobra.Command, _ []string) {
+	Run: func(cmd *cobra.Command, _ []string) {
+		cmd.Printf("mpls %s - press Ctrl+D to quit.\n", Version)
 		previewserver.OpenBrowserOnStartup = !noAuto
 		mpls.Run()
 	},
