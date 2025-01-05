@@ -55,6 +55,10 @@ experience:
   [wikilink](https://github.com/abhinav/goldmark-wikilink) extension enables
   parsing and rendering of [[wiki]] -style links. (*Note:* image preview does
   not work for wikilinks)
+- Footnotes: The [footnote](https://michelf.ca/projects/php-markdown/extra/#footnotes)
+extension enables footnotes.
+- Emoji: The [emoji](https://github.com/yuin/goldmark-emoji)
+extension enables emoji support.
 
 ### Mermaid
 
@@ -152,6 +156,8 @@ The following options can be used when starting `mpls`:
 | `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(1)** |
 | `--dark-mode`  | Enable dark mode |
 | `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
+| `--enable-footnotes` | Enable footnotes |
+| `--enable-emoji` | Enable emoji support |
 | `--full-sync`  | Sync the entire document for every change being made. **(2)** |
 | `--no-auto`    | Don't open preview automatically |
 | `--version`    | Displays the mpls version. |
