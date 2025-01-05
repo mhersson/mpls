@@ -51,14 +51,17 @@ experience:
   KaTeX, providing a clear and professional presentation of equations.
 
 **Optional**
+- Emoji: The [emoji](https://github.com/yuin/goldmark-emoji)
+extension enables emoji support.
+- Footnotes: The [footnote](https://michelf.ca/projects/php-markdown/extra/#footnotes)
+extension enables footnotes.
 - Wikilinks rendering: The
   [wikilink](https://github.com/abhinav/goldmark-wikilink) extension enables
   parsing and rendering of [[wiki]] -style links. (*Note:* image preview does
   not work for wikilinks)
-- Footnotes: The [footnote](https://michelf.ca/projects/php-markdown/extra/#footnotes)
-extension enables footnotes.
-- Emoji: The [emoji](https://github.com/yuin/goldmark-emoji)
-extension enables emoji support.
+
+If you want a Goldmark extension added to `mpls` please look
+[here](https://github.com/mhersson/mpls/issues/4).
 
 ### Mermaid
 
