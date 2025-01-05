@@ -6,6 +6,7 @@ import (
 	katex "github.com/FurqanSoftware/goldmark-katex"
 	img64 "github.com/tenkoh/goldmark-img64"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark-emoji"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	meta "github.com/yuin/goldmark-meta"
 	"github.com/yuin/goldmark/extension"
@@ -17,6 +18,9 @@ import (
 var (
 	CodeHighlightingStyle string
 	EnableWikiLinks       bool
+
+	EnableFootnotes bool
+	EnableEmoji     bool
 )
 
 func HTML(document string) string {
@@ -32,8 +36,16 @@ func HTML(document string) string {
 		&katex.Extender{},
 	}
 
-	if EnableWikiLinks {
-		extensions = append(extensions, &wikilink.Extender{})
+	optionalExtensions := map[goldmark.Extender]bool{
+		&wikilink.Extender{}: EnableWikiLinks,
+		extension.Footnote:   EnableFootnotes,
+		emoji.Emoji:          EnableEmoji,
+	}
+
+	for ext, enabled := range optionalExtensions {
+		if enabled {
+			extensions = append(extensions, ext)
+		}
 	}
 
 	markdown := goldmark.New(
