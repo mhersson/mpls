@@ -166,6 +166,7 @@ The following options can be used when starting `mpls`:
 | `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
 | `--full-sync`  | Sync the entire document for every change being made. **(3)** |
 | `--no-auto`    | Don't open preview automatically |
+| `--port int`   | Set a fixed port for the preview server |
 | `--version`    | Displays the mpls version. |
 | `--help`       | Displays help information about the available options. |
 
@@ -198,6 +199,7 @@ name = "markdown"
 
 [language-server.mpls]
 command = "mpls"
+# args = ["--no-auto","--port","8888"]
 ```
 
 </details>
