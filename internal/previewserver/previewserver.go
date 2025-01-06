@@ -21,7 +21,7 @@ import (
 var (
 	Browser              string
 	DarkMode             bool
-  FixedPort            int
+	FixedPort            int
 	OpenBrowserOnStartup bool
 
 	//go:embed web/index.html
@@ -69,7 +69,7 @@ func WaitForClients(timeout time.Duration) error {
 }
 
 func New() *Server {
-  port := rand.Intn(65535-10000) + 10000 //nolint:gosec
+	port := rand.Intn(65535-10000) + 10000 //nolint:gosec
 	if FixedPort > 0 {
 		port = FixedPort
 	}
