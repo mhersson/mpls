@@ -40,15 +40,17 @@ experience:
 **Always enabled**
 - Github Flavored Markdown: Goldmark's built in GFM extension ensures Table,
   Strikethrough, Linkify and TaskList elements are displayed correctly.
-- Syntax highlighting: The
-  [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
-  syntax-highlighting to the fenced code blocks.
 - Image Rendering: The [img64](https://github.com/tenkoh/goldmark-img64)
   extension allows for seamless integration of images within your Markdown
   files.
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
   KaTeX, providing a clear and professional presentation of equations.
+- Metadata: The [meta](https://github.com/yuin/goldmark-meta) extension parses
+  metadata in YAML format. (Metadata is not displayed in the preview)
+- Syntax highlighting: The
+  [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
+  syntax-highlighting to the fenced code blocks.
 
 **Optional**
 - Emoji: The [emoji](https://github.com/yuin/goldmark-emoji)
@@ -158,9 +160,9 @@ The following options can be used when starting `mpls`:
 |----------------|-------------|
 | `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(1)** |
 | `--dark-mode`  | Enable dark mode |
-| `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
-| `--enable-footnotes` | Enable footnotes |
 | `--enable-emoji` | Enable emoji support |
+| `--enable-footnotes` | Enable footnotes |
+| `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
 | `--full-sync`  | Sync the entire document for every change being made. **(2)** |
 | `--no-auto`    | Don't open preview automatically |
 | `--version`    | Displays the mpls version. |
