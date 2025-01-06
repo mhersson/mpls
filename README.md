@@ -199,7 +199,7 @@ name = "markdown"
 
 [language-server.mpls]
 command = "mpls"
-# args = ["--no-auto","--port","8888"]
+args = ["--dark-mode","--enable-emoji"]
 ```
 
 </details>
@@ -226,7 +226,7 @@ return {
           if not configs.mpls then
             configs.mpls = {
               default_config = {
-                cmd = {"mpls"},
+                cmd = {"mpls", "--dark-mode", "--enable-emoji" },
                 filetypes = {"markdown"},
                 single_file_support = true,
                 root_dir = require("lspconfig").util.find_git_ancestor,
@@ -281,11 +281,14 @@ live preview of markdown files in your browser while you edit them in your favor
 
   (lsp-register-client
   (make-lsp-client :new-connection (lsp-stdio-connection
-                                    (lambda ()
-                                      (or (executable-find lsp-mpls-server-command)
-                                          (lsp-package-path 'mpls)
-                                          "mpls")
-                                      ))
+                                     (lambda ()
+                                       (list
+                                        (or (executable-find lsp-mpls-server-command)
+                                            (lsp-package-path 'mpls)
+                                            "mpls")
+                                        "--dark-mode"
+                                        "--enable-emoji"
+                                        )))
                     :activation-fn (lsp-activate-on "markdown")
                     :initialized-fn (lambda (workspace)
                                       (with-lsp-workspace workspace
