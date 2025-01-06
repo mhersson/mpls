@@ -40,21 +40,30 @@ experience:
 **Always enabled**
 - Github Flavored Markdown: Goldmark's built in GFM extension ensures Table,
   Strikethrough, Linkify and TaskList elements are displayed correctly.
-- Syntax highlighting: The
-  [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
-  syntax-highlighting to the fenced code blocks.
 - Image Rendering: The [img64](https://github.com/tenkoh/goldmark-img64)
   extension allows for seamless integration of images within your Markdown
   files.
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
   KaTeX, providing a clear and professional presentation of equations.
+- Metadata: The [meta](https://github.com/yuin/goldmark-meta) extension parses
+  metadata in YAML format. (Metadata is not displayed in the preview)
+- Syntax highlighting: The
+  [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
+  syntax-highlighting to the fenced code blocks.
 
 **Optional**
+- Emoji: The [emoji](https://github.com/yuin/goldmark-emoji)
+extension enables emoji support.
+- Footnotes: The [footnote](https://michelf.ca/projects/php-markdown/extra/#footnotes)
+extension enables footnotes.
 - Wikilinks rendering: The
   [wikilink](https://github.com/abhinav/goldmark-wikilink) extension enables
   parsing and rendering of [[wiki]] -style links. (*Note:* image preview does
   not work for wikilinks)
+
+If you want a Goldmark extension added to `mpls` please look
+[here](https://github.com/mhersson/mpls/issues/4).
 
 ### Mermaid
 
@@ -149,20 +158,26 @@ The following options can be used when starting `mpls`:
 
 | Flag           | Description |
 |----------------|-------------|
-| `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(1)** |
+| `--browser`    | Specify web browser to use for the preview. **(1)**
+| `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
 | `--dark-mode`  | Enable dark mode |
+| `--enable-emoji` | Enable emoji support |
+| `--enable-footnotes` | Enable footnotes |
 | `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
-| `--full-sync`  | Sync the entire document for every change being made. **(2)** |
+| `--full-sync`  | Sync the entire document for every change being made. **(3)** |
 | `--no-auto`    | Don't open preview automatically |
 | `--port int`   | Set a fixed port for the preview server |
 | `--version`    | Displays the mpls version. |
 | `--help`       | Displays help information about the available options. |
 
- 1. The goldmark-highlighting extension use
+ 1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS
+    name of Application e.g "Safari" or "Microsoft Edge", on Windows use full
+    path.
+ 2. The goldmark-highlighting extension use
     [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
     all available styles in Chroma are available here. Default style is
     `catppuccin-mocha`.
- 2. Has a small impact on performance, but makes sure that commands like
+ 3. Has a small impact on performance, but makes sure that commands like
     `reflow` in Helix, does not impact the accuracy of the preview.
     Additionally, it disables `mpls'` efforts to scroll to the closest section
     header when editing.
