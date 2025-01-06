@@ -17,7 +17,7 @@ func WorkspaceExecuteCommand(context *glsp.Context, param *protocol.ExecuteComma
 		_ = protocol.Trace(context, protocol.MessageTypeInfo,
 			log("WorkspaceExecuteCommand - Open preview: "+currentURI))
 
-		err := previewserver.Openbrowser(fmt.Sprintf("http://localhost:%d", previewServer.Port))
+		err := previewserver.Openbrowser(fmt.Sprintf("http://localhost:%d", previewServer.Port), previewserver.Browser)
 		if err != nil {
 			return nil, err
 		}

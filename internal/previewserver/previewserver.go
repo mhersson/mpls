@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	OpenBrowserOnStartup bool
+	Browser              string
 	DarkMode             bool
+	OpenBrowserOnStartup bool
 
 	//go:embed web/index.html
 	indexHTML string
@@ -125,7 +126,10 @@ func (s *Server) Start() {
 	}()
 
 	if OpenBrowserOnStartup {
-		_ = Openbrowser(fmt.Sprintf("http://localhost:%d", s.Port))
+		err := Openbrowser(fmt.Sprintf("http://localhost:%d", s.Port), Browser)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s error opening browser: %v\n", logTime(), err)
+		}
 	}
 
 	// Wait for interrupt signal
@@ -233,21 +237,33 @@ func handleMessages() {
 	}
 }
 
-func Openbrowser(url string) error {
+func Openbrowser(url, browser string) error {
 	var err error
 
 	switch runtime.GOOS {
 	case "linux":
-		err = exec.Command("xdg-open", url).Start()
+		browserCommand := "xdg-open"
+		if browser != "" {
+			browserCommand = browser
+		}
+
+		err = exec.Command(browserCommand, url).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		if browser != "" {
+			err = exec.Command(browser, url).Start()
+		} else {
+			err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		}
 	case "darwin":
-		err = exec.Command("open", "-g", url).Start()
+		openArgs := []string{"-g", url}
+		if browser != "" {
+			openArgs = append(openArgs[:1], "-a", browser, url)
+		}
+
+		err = exec.Command("open", openArgs...).Start()
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s error opening browser: %v\n", logTime(), err)
-
 		return err
 	}
 
