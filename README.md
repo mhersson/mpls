@@ -172,7 +172,8 @@ The following options can be used when starting `mpls`:
 
  1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS
     name of Application e.g "Safari" or "Microsoft Edge", on Windows use full
-    path.
+    path. On WSL, specify the executable as "explorer.exe" to start the default 
+    Windows browser.
  2. The goldmark-highlighting extension use
     [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
     all available styles in Chroma are available here. Default style is
@@ -199,7 +200,9 @@ name = "markdown"
 
 [language-server.mpls]
 command = "mpls"
-args = ["--dark-mode","--enable-emoji"]
+args = ["--dark-mode", "--enable-emoji"]
+# An example args entry showing how to specify flags with values:
+# args = ["--port", "8080", "--browser", "google-chrome"]
 ```
 
 </details>
