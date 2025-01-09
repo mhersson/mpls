@@ -142,7 +142,7 @@ func (s *Server) Start() {
 }
 
 // Update updates the current HTML content.
-func (s *Server) Update(newContent string, section string) {
+func (s *Server) Update(filename, newContent, section string) {
 	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -155,9 +155,10 @@ func (s *Server) Update(newContent string, section string) {
 	type Event struct {
 		HTML    string
 		Section string
+		Title   string
 	}
 
-	e := Event{HTML: newContent, Section: section}
+	e := Event{HTML: newContent, Section: section, Title: filename}
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)

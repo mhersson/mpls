@@ -1,12 +1,25 @@
 const ws = new WebSocket("ws://localhost:%d/ws");
 
+let debounceTimeout;
+
+function debounce(func, delay) {
+  return function (...args) {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => func.apply(this, args), delay);
+  };
+}
+
+const updateTitle = debounce((title) => {
+  document.title = title;
+}, 200);
+
 const renderMermaid = async () => {
   if (typeof window.mermaid !== "undefined") {
     await window.mermaid.run({
       querySelector: ".language-mermaid",
     });
   } else {
-    console.error("Mermaid is not defined yet.");
+    console.log("Mermaid is not defined.");
   }
 };
 
@@ -20,7 +33,11 @@ ws.onmessage = function (event) {
   const response = JSON.parse(event.data);
   const renderedHtml = response.HTML;
   const section = response.Section;
+  const title = "mpls - " + response.Title;
 
+  if (title != document.title) {
+    updateTitle(title);
+  }
   //console.log(renderedHtml);
 
   document.body.innerHTML = `<div id="content">${renderedHtml}</div>`;

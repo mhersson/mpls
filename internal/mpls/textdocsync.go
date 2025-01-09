@@ -2,6 +2,7 @@ package mpls
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -13,25 +14,29 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-var previewServer *previewserver.Server
-var document string
-var currentURI string
+var (
+	content       string
+	currentURI    string
+	filename      string
+	previewServer *previewserver.Server
+)
 
 func TextDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	currentURI = params.TextDocument.URI
+	filename = filepath.Base(currentURI)
 	doc := params.TextDocument
 
 	_ = protocol.Trace(context, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+doc.URI))
 
-	document = doc.Text
+	content = doc.Text
 
 	// Give the browser 5 seconds to connect
 	if err := previewserver.WaitForClients(5 * time.Second); err != nil {
 		return err
 	}
 
-	html := parser.HTML(document)
-	previewServer.Update(html, "")
+	html := parser.HTML(content)
+	previewServer.Update(filename, html, "")
 
 	return nil
 }
@@ -42,20 +47,21 @@ func TextDocumentDidChange(context *glsp.Context, params *protocol.DidChangeText
 			if params.TextDocument.URI != currentURI {
 				_ = protocol.Trace(context, protocol.MessageTypeInfo,
 					log("TextDocumentUriDidChange - switching document: "+params.TextDocument.URI))
-				document = string(loadDocument(params.TextDocument.URI))
+				content = string(loadDocument(params.TextDocument.URI))
 				currentURI = params.TextDocument.URI
+				filename = filepath.Base(currentURI)
 			}
 
-			startIndex, endIndex := c.Range.IndexesIn(document)
-			document = document[:startIndex] + c.Text + document[endIndex:]
+			startIndex, endIndex := c.Range.IndexesIn(content)
+			content = content[:startIndex] + c.Text + content[endIndex:]
 
-			currentSection := findSection(document, startIndex)
-			html := parser.HTML(document)
+			currentSection := findSection(content, startIndex)
+			html := parser.HTML(content)
 
-			previewServer.Update(html, currentSection)
+			previewServer.Update(filename, html, currentSection)
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
 			html := parser.HTML(c.Text)
-			previewServer.Update(html, "")
+			previewServer.Update(filename, html, "")
 		}
 	}
 
@@ -63,10 +69,10 @@ func TextDocumentDidChange(context *glsp.Context, params *protocol.DidChangeText
 }
 
 func TextDocumentDidSave(_ *glsp.Context, params *protocol.DidSaveTextDocumentParams) error {
-	document = string(loadDocument(params.TextDocument.URI))
+	content = string(loadDocument(params.TextDocument.URI))
 
-	html := parser.HTML(document)
-	previewServer.Update(html, "")
+	html := parser.HTML(content)
+	previewServer.Update(filename, html, "")
 
 	return nil
 }
