@@ -33,6 +33,10 @@ code {
   background-color: #252525;
 }
 
+code.language-mermaid {
+  background-color: #0d0d12;
+}
+
 table,
 th,
 td {
