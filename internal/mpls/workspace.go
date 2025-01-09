@@ -22,7 +22,7 @@ func WorkspaceExecuteCommand(context *glsp.Context, param *protocol.ExecuteComma
 			return nil, err
 		}
 
-		if err := previewserver.WaitForClients(5 * time.Second); err != nil {
+		if err := previewserver.WaitForClients(10 * time.Second); err != nil {
 			return nil, err
 		}
 

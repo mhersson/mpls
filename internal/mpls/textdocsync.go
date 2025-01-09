@@ -24,14 +24,15 @@ var (
 func TextDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	currentURI = params.TextDocument.URI
 	filename = filepath.Base(currentURI)
+
 	doc := params.TextDocument
 
 	_ = protocol.Trace(context, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+doc.URI))
 
 	content = doc.Text
 
-	// Give the browser 5 seconds to connect
-	if err := previewserver.WaitForClients(5 * time.Second); err != nil {
+	// Give the browser time to connect
+	if err := previewserver.WaitForClients(10 * time.Second); err != nil {
 		return err
 	}
 
