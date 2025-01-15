@@ -121,7 +121,6 @@ func formatSection(section string) string {
 	re := regexp.MustCompile(`[^a-z0-9&]+`)
 	section = re.ReplaceAllString(section, "-")
 
-	// Delete & chars so that e.g "Emoji & Footnotes" becomes emoji--footnotes
 	section = strings.ReplaceAll(section, "&", "")
 
 	section = strings.Trim(section, "-")

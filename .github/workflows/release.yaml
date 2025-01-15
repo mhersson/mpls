@@ -3,7 +3,7 @@ name: Release Go project
 on:
   push:
     tags:
-    - "*" # triggers only if push new tag version
+    - "v*" # triggers only if push new tag version
 
 jobs:
   build:

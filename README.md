@@ -45,7 +45,9 @@ experience:
   files.
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
-  KaTeX, providing a clear and professional presentation of equations.
+  KaTeX, providing a clear and professional presentation of equations. **The KaTeX
+  extension requires `cgo` and will only be included if `mpls` is built with
+  `CGO_ENABLED=1`. This is not done for the prebuilt binaries.**
 - Metadata: The [meta](https://github.com/yuin/goldmark-meta) extension parses
   metadata in YAML format. (Metadata is not displayed in the preview)
 - Syntax highlighting: The
@@ -77,9 +79,6 @@ The easiest way to install `mpls` is to download one of the prebuilt
 release binaries. You can find the latest releases on the [Releases
 page](https://github.com/mhersson/mpls/releases).
 
-> `mpls` uses CGO, which complicates cross-compiling. Therefore, for now, there
-> are only prebuilt binaries available for Linux/amd64.
-
 1. Download the appropriate tar.gz file for your operating system.
 2. Extract the contents of the tar.gz file. You can do this using the following
    command in your terminal:
@@ -98,8 +97,8 @@ page](https://github.com/mhersson/mpls/releases).
 <details>
 <summary>Build From Source</summary>
 
-If you prefer to build from source or if no prebuilt binaries are available for
-your architecture, follow these steps:
+If you prefer to build from source, if you want the KaTeX math extension, or if
+no prebuilt binaries are available for your architecture, follow these steps:
 
 1. **Clone the repository**:
 
@@ -112,11 +111,12 @@ your architecture, follow these steps:
 
     You can build the project using the following command:
 
+    *To include the math extension, you need to set `CGO_ENABLED=1` before running this command:*
     ```bash
     make build
     ```
 
-    This will compile the source code and create an executable.
+    This command will compile the source code and create an executable.
 
 3. **Install the executable**:
 

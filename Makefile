@@ -4,7 +4,7 @@
 
 SHELL=bash
 
-VERSION="v0.7.2"
+VERSION="v0.8.0"
 
 # make will interpret non-option arguments in the command line as targets.
 # This turns them into do-nothing targets, so make won't complain:
@@ -19,8 +19,6 @@ endif
 LDFLAGS="-s -w \
 -X github.com/mhersson/mpls/cmd.Version=$(VERSION) \
 -X github.com/mhersson/mpls/internal/mpls.Version=$(VERSION)"
-
-export CGO_ENABLED=1
 
 all: build
 
@@ -52,7 +50,11 @@ vet: ## Run go vet
 	go vet ./...
 
 build: fmt vet ## Build the binary.
-	@go build -ldflags $(LDFLAGS) .
+	@if [ "$CGO_ENABLED" = "1" ]; then \
+		go build -tags cgo -ldflags $(LDFLAGS) .; \
+	else \
+		go build -ldflags $(LDFLAGS) .; \
+	fi
 
 install: ## Install the binary.
 	@go install -ldflags $(LDFLAGS)

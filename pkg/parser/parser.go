@@ -3,12 +3,8 @@ package parser
 import (
 	"bytes"
 
-	katex "github.com/FurqanSoftware/goldmark-katex"
-	img64 "github.com/tenkoh/goldmark-img64"
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark-emoji"
-	highlighting "github.com/yuin/goldmark-highlighting/v2"
-	meta "github.com/yuin/goldmark-meta"
+	emoji "github.com/yuin/goldmark-emoji"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
@@ -26,15 +22,7 @@ var (
 func HTML(document string) string {
 	source := []byte(document)
 
-	extensions := []goldmark.Extender{
-		extension.GFM,
-		highlighting.NewHighlighting(
-			highlighting.WithStyle(CodeHighlightingStyle),
-		),
-		meta.Meta,
-		img64.Img64,
-		&katex.Extender{},
-	}
+	extensions := defaultExtensions()
 
 	optionalExtensions := map[goldmark.Extender]bool{
 		&wikilink.Extender{}: EnableWikiLinks,
