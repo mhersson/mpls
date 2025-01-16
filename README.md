@@ -45,9 +45,9 @@ experience:
   files.
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
-  KaTeX, providing a clear and professional presentation of equations. **The KaTeX
-  extension requires `cgo` and will only be included if `mpls` is built with
-  `CGO_ENABLED=1`. This is not done for the prebuilt binaries.**
+  KaTeX.  *Please note that the KaTeX extension requires `cgo` and will only be
+  included if `mpls` is built with `CGO_ENABLED=1`. This option is not enabled
+  for the prebuilt binaries.*
 - Metadata: The [meta](https://github.com/yuin/goldmark-meta) extension parses
   metadata in YAML format. (Metadata is not displayed in the preview)
 - Syntax highlighting: The
