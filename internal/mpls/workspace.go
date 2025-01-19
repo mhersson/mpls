@@ -26,7 +26,10 @@ func WorkspaceExecuteCommand(context *glsp.Context, param *protocol.ExecuteComma
 			return nil, err
 		}
 
-		content = string(loadDocument(currentURI))
+		content, err = loadDocument(currentURI)
+		if err != nil {
+			return nil, err
+		}
 
 		html := parser.HTML(content)
 		previewServer.Update(filename, html, "")

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 	"unicode"
@@ -43,12 +44,19 @@ func TextDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocu
 }
 
 func TextDocumentDidChange(context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
+	var err error
+
 	for _, change := range params.ContentChanges {
 		if c, ok := change.(protocol.TextDocumentContentChangeEvent); ok {
 			if params.TextDocument.URI != currentURI {
 				_ = protocol.Trace(context, protocol.MessageTypeInfo,
 					log("TextDocumentUriDidChange - switching document: "+params.TextDocument.URI))
-				content = string(loadDocument(params.TextDocument.URI))
+
+				content, err = loadDocument(params.TextDocument.URI)
+				if err != nil {
+					return err
+				}
+
 				currentURI = params.TextDocument.URI
 				filename = filepath.Base(currentURI)
 			}
@@ -70,7 +78,12 @@ func TextDocumentDidChange(context *glsp.Context, params *protocol.DidChangeText
 }
 
 func TextDocumentDidSave(_ *glsp.Context, params *protocol.DidSaveTextDocumentParams) error {
-	content = string(loadDocument(params.TextDocument.URI))
+	var err error
+
+	content, err = loadDocument(params.TextDocument.URI)
+	if err != nil {
+		return err
+	}
 
 	html := parser.HTML(content)
 	previewServer.Update(filename, html, "")
@@ -82,10 +95,20 @@ func TextDocumentDidClose(_ *glsp.Context, _ *protocol.DidCloseTextDocumentParam
 	return nil
 }
 
-func loadDocument(uri string) []byte {
-	c, _ := os.ReadFile(strings.TrimPrefix(uri, "file://"))
+func loadDocument(uri string) (string, error) {
+	f := strings.TrimPrefix(uri, "file://")
 
-	return c
+	if runtime.GOOS == "windows" {
+		f = strings.TrimPrefix(uri, "file:///")
+		f = strings.ReplaceAll(f, "/", "\\")
+	}
+
+	c, err := os.ReadFile(f)
+	if err != nil {
+		return "", err
+	}
+
+	return string(c), nil
 }
 
 // Find the closest section heading.
