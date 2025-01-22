@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const ws = new WebSocket("ws://localhost:%d/ws");
 
+  const DEBOUNCE_DELAY = 200;
   let debounceTimeout;
   let isReloading = false;
 
@@ -13,7 +14,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const updateTitle = debounce((title) => {
     document.title = title;
-  }, 200);
+  }, DEBOUNCE_DELAY);
+
+  function updateContent(renderedHtml) {
+    document.body.innerHTML = `<div id="content">${renderedHtml}</div>`;
+    // console.log(renderedHtml);
+  }
+
+  const saveContentToLocalStorage = debounce((renderedHtml) => {
+    localStorage.setItem("savedContent", renderedHtml);
+  }, DEBOUNCE_DELAY);
 
   const renderMermaid = async () => {
     const mermaidElements = document.querySelectorAll(".language-mermaid");
@@ -22,6 +32,24 @@ document.addEventListener("DOMContentLoaded", () => {
         querySelector: ".language-mermaid",
       });
     }
+  };
+
+  window.addEventListener("load", function () {
+    const savedContent = localStorage.getItem("savedContent");
+    if (savedContent) {
+      updateContent(savedContent);
+    }
+  });
+
+  window.addEventListener("beforeunload", function () {
+    isReloading = true;
+  });
+
+  ws.onclose = function (event) {
+    if (!isReloading) {
+      window.close();
+    }
+    console.log("WebSocket connection closed:", event);
   };
 
   ws.onopen = function (event) {
@@ -40,9 +68,8 @@ document.addEventListener("DOMContentLoaded", () => {
       updateTitle(title);
     }
 
-    // console.log(renderedHtml);
-
-    document.body.innerHTML = `<div id="content">${renderedHtml}</div>`;
+    updateContent(renderedHtml);
+    saveContentToLocalStorage(renderedHtml);
 
     renderMermaid();
 
@@ -64,16 +91,5 @@ document.addEventListener("DOMContentLoaded", () => {
         console.warn("Target element not found for cursor position:", section);
       }
     }
-  };
-
-  window.addEventListener("beforeunload", function () {
-    isReloading = true;
-  });
-
-  ws.onclose = function (event) {
-    if (!isReloading) {
-      window.close();
-    }
-    console.log("WebSocket connection closed:", event);
   };
 });
