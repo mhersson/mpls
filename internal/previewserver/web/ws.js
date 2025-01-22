@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const ws = new WebSocket("ws://localhost:%d/ws");
 
   let debounceTimeout;
+  let isReloading = false;
 
   function debounce(func, delay) {
     return function (...args) {
@@ -65,8 +66,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  window.addEventListener("beforeunload", function () {
+    isReloading = true;
+  });
+
   ws.onclose = function (event) {
-    window.close();
+    if (!isReloading) {
+      window.close();
+    }
     console.log("WebSocket connection closed:", event);
   };
 });
