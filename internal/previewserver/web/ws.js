@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const ws = new WebSocket("ws://localhost:%d/ws");
 
-  const DEBOUNCE_DELAY = 200;
+  const DEBOUNCE_DELAY = 1000;
   let debounceTimeout;
   let isReloading = false;
 
@@ -12,18 +12,14 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  const updateTitle = debounce((title) => {
-    document.title = title;
+  const saveContentToLocalStorage = debounce((renderedHtml) => {
+    localStorage.setItem("savedContent", renderedHtml);
   }, DEBOUNCE_DELAY);
 
   function updateContent(renderedHtml) {
     document.body.innerHTML = `<div id="content">${renderedHtml}</div>`;
     // console.log(renderedHtml);
   }
-
-  const saveContentToLocalStorage = debounce((renderedHtml) => {
-    localStorage.setItem("savedContent", renderedHtml);
-  }, DEBOUNCE_DELAY);
 
   const renderMermaid = async () => {
     const mermaidElements = document.querySelectorAll(".language-mermaid");
@@ -65,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const title = "mpls - " + response.Title;
 
     if (title !== document.title) {
-      updateTitle(title);
+      document.title = title;
     }
 
     updateContent(renderedHtml);
