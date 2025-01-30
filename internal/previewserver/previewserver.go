@@ -142,7 +142,7 @@ func (s *Server) Start() {
 }
 
 // Update updates the current HTML content.
-func (s *Server) Update(filename, newContent, section string) {
+func (s *Server) Update(filename, newContent, section string, meta map[string]interface{}) {
 	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
@@ -156,9 +156,12 @@ func (s *Server) Update(filename, newContent, section string) {
 		HTML    string
 		Section string
 		Title   string
+		Meta    string
 	}
 
-	e := Event{HTML: newContent, Section: section, Title: filename}
+	m := convertMetaToHTMLTable(meta)
+
+	e := Event{HTML: newContent, Section: section, Title: filename, Meta: m}
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
@@ -273,4 +276,19 @@ func Openbrowser(url, browser string) error {
 	}
 
 	return nil
+}
+
+func convertMetaToHTMLTable(meta map[string]interface{}) string {
+	if len(meta) == 0 {
+		return ""
+	}
+
+	html := "<table>"
+	html += "<tr><th colspan='2'>Meta</th></tr>"
+	for k, v := range meta {
+		html += fmt.Sprintf("<tr><td>%s</td><td>%v</td></tr>", k, v)
+	}
+	html += "</table>"
+
+	return html
 }

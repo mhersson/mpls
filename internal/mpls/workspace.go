@@ -31,8 +31,8 @@ func WorkspaceExecuteCommand(context *glsp.Context, param *protocol.ExecuteComma
 			return nil, err
 		}
 
-		html := parser.HTML(content)
-		previewServer.Update(filename, html, "")
+		html, meta := parser.HTML(content)
+		previewServer.Update(filename, html, "", meta)
 	default:
 		return nil, errors.New("unknow  command")
 	}

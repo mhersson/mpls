@@ -49,7 +49,7 @@ experience:
   included if `mpls` is built with `CGO_ENABLED=1`. This option is not enabled
   for the prebuilt binaries.*
 - Metadata: The [meta](https://github.com/yuin/goldmark-meta) extension parses
-  metadata in YAML format. (Metadata is not displayed in the preview)
+  metadata in YAML format.
 - Syntax highlighting: The
   [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
   syntax-highlighting to the fenced code blocks.

@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const renderedHtml = response.HTML;
     const section = response.Section;
     const title = "mpls - " + response.Title;
+    const meta = response.Meta;
 
     const pin = document.getElementById("pin");
     if (pin.checked && title !== document.title) {
@@ -70,6 +71,8 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("header-summary").innerText = response.Title;
       document.title = title;
     }
+
+    document.getElementById("header-meta").innerHTML = meta;
 
     updateContent(renderedHtml);
     saveContentToLocalStorage(renderedHtml);

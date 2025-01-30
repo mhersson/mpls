@@ -5,6 +5,7 @@ import (
 
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
+	meta "github.com/yuin/goldmark-meta"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
@@ -19,7 +20,7 @@ var (
 	EnableEmoji     bool
 )
 
-func HTML(document string) string {
+func HTML(document string) (string, map[string]interface{}) {
 	source := []byte(document)
 
 	extensions := defaultExtensions()
@@ -46,9 +47,10 @@ func HTML(document string) string {
 
 	var buf bytes.Buffer
 
-	if err := markdown.Convert(source, &buf); err != nil {
+	ctx := parser.NewContext()
+	if err := markdown.Convert(source, &buf, parser.WithContext(ctx)); err != nil {
 		panic(err)
 	}
 
-	return buf.String()
+	return buf.String(), meta.Get(ctx)
 }

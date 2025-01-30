@@ -37,8 +37,8 @@ func TextDocumentDidOpen(context *glsp.Context, params *protocol.DidOpenTextDocu
 		return err
 	}
 
-	html := parser.HTML(content)
-	previewServer.Update(filename, html, "")
+	html, meta := parser.HTML(content)
+	previewServer.Update(filename, html, "", meta)
 
 	return nil
 }
@@ -65,12 +65,12 @@ func TextDocumentDidChange(context *glsp.Context, params *protocol.DidChangeText
 			content = content[:startIndex] + c.Text + content[endIndex:]
 
 			currentSection := findSection(content, startIndex)
-			html := parser.HTML(content)
+			html, meta := parser.HTML(content)
 
-			previewServer.Update(filename, html, currentSection)
+			previewServer.Update(filename, html, currentSection, meta)
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
-			html := parser.HTML(c.Text)
-			previewServer.Update(filename, html, "")
+			html, meta := parser.HTML(c.Text)
+			previewServer.Update(filename, html, "", meta)
 		}
 	}
 
@@ -85,8 +85,8 @@ func TextDocumentDidSave(_ *glsp.Context, params *protocol.DidSaveTextDocumentPa
 		return err
 	}
 
-	html := parser.HTML(content)
-	previewServer.Update(filename, html, "")
+	html, meta := parser.HTML(content)
+	previewServer.Update(filename, html, "", meta)
 
 	return nil
 }
