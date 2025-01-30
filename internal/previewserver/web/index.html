@@ -10,9 +10,19 @@
       integrity="sha384-veTAhWILPOotXm+kbR5uY7dRamYLJf58I7P+hJhjeuc7hsMAkJHTsPahAl0hBST0"
       crossorigin="anonymous"
     />
-    <title>Markdown Preview</title>
+    <title></title>
   </head>
   <body>
+    <div>
+      <details>
+        <summary id="header-summary"></summary>
+        <div id="header">
+          <label id="header-label">
+            <input type="checkbox" id="pin" /> Pin
+          </label>
+        </div>
+      </details>
+    </div>
     <div id="content"></div>
     <script type="module">
       import mermaid from "https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.2.1/mermaid.esm.mjs";

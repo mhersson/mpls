@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }, DEBOUNCE_DELAY);
 
   function updateContent(renderedHtml) {
-    document.body.innerHTML = `<div id="content">${renderedHtml}</div>`;
+    document.getElementById("content").innerHTML = renderedHtml;
     // console.log(renderedHtml);
   }
 
@@ -60,7 +60,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const section = response.Section;
     const title = "mpls - " + response.Title;
 
+    const pin = document.getElementById("pin");
+    if (pin.checked && title !== document.title) {
+      console.log("Preview is pinned - ignoring event");
+      return;
+    }
+
     if (title !== document.title) {
+      document.getElementById("header-summary").innerText = response.Title;
       document.title = title;
     }
 
