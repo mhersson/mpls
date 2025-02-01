@@ -100,7 +100,9 @@ func loadDocument(uri string) (string, error) {
 
 	if runtime.GOOS == "windows" {
 		f = strings.TrimPrefix(uri, "file:///")
-		f = strings.ReplaceAll(f, "/", "\\")
+		f = filepath.FromSlash(f)
+		f = strings.Replace(f, "%3A", ":", 1)
+		f = strings.ReplaceAll(f, "%20", " ")
 	}
 
 	c, err := os.ReadFile(f)
