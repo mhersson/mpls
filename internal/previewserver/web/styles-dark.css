@@ -24,16 +24,23 @@ body {
   display: table-cell;
   vertical-align: middle;
 }
-
 #header {
-  position: relative;
-  padding: 10px;
+  display: flex;
+  align-items: flex-start;
 }
 
-#header-label {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+#checkbox-container {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#checkbox-container label {
+  margin-bottom: 5px;
+}
+
+img {
+  max-width: 100%;
 }
 
 pre {
