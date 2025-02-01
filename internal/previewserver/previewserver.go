@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -159,9 +160,10 @@ func (s *Server) Update(filename, newContent, section string, meta map[string]in
 		Meta    string
 	}
 
+	t := strings.TrimSuffix(filename, ".md")
 	m := convertMetaToHTMLTable(meta)
 
-	e := Event{HTML: newContent, Section: section, Title: filename, Meta: m}
+	e := Event{HTML: newContent, Section: section, Title: t, Meta: m}
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
