@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -285,10 +286,17 @@ func convertMetaToHTMLTable(meta map[string]interface{}) string {
 		return ""
 	}
 
+	keys := make([]string, 0, len(meta))
+	for k := range meta {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
 	html := "<table>"
 	html += "<tr><th colspan='2'>Meta</th></tr>"
-	for k, v := range meta {
-		html += fmt.Sprintf("<tr><td>%s</td><td>%v</td></tr>", k, v)
+	for _, k := range keys {
+		html += fmt.Sprintf("<tr><td>%s</td><td>%v</td></tr>", k, meta[k])
 	}
 	html += "</table>"
 

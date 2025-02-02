@@ -72,7 +72,10 @@ document.addEventListener("DOMContentLoaded", () => {
       document.title = title;
     }
 
-    document.getElementById("header-meta").innerHTML = meta;
+    const headerMeta = document.getElementById("header-meta");
+    if (headerMeta !== meta) {
+      document.getElementById("header-meta").innerHTML = meta;
+    }
 
     updateContent(renderedHtml);
     saveContentToLocalStorage(renderedHtml);
