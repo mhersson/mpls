@@ -5,6 +5,49 @@ document.addEventListener("DOMContentLoaded", () => {
   let debounceTimeout;
   let isReloading = false;
 
+  const themeToggle = document.getElementById("theme-toggle");
+  const themeStylesheet = document.getElementById("theme-stylesheet");
+
+  function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+      const date = new Date(Date.now() + days * 864e5);
+      expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = `${name}=${encodeURIComponent(value)}${expires}; path=/; SameSite=Lax`;
+  }
+
+  function getCookie(name) {
+    const match = document.cookie.match(
+      new RegExp("(^| )" + encodeURIComponent(name) + "=([^;]*)(;|$)"),
+    );
+    return match ? decodeURIComponent(match[2]) : null;
+  }
+
+  const theme = getCookie("theme");
+  if (theme) {
+    themeStylesheet.href =
+      theme === "dark" ? "colors-dark.css" : "colors-light.css";
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: theme === "dark" ? "dark" : "default",
+    });
+
+    themeToggle.checked = theme === "dark";
+  }
+
+  themeToggle.addEventListener("change", () => {
+    const newTheme = themeToggle.checked ? "dark" : "light";
+    themeStylesheet.href =
+      newTheme === "dark" ? "colors-dark.css" : "colors-light.css";
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: newTheme === "dark" ? "dark" : "default",
+    });
+
+    setCookie("theme", newTheme, 365);
+  });
+
   function debounce(func, delay) {
     return function (...args) {
       clearTimeout(debounceTimeout);

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/%s" />
+    <link id="theme-stylesheet" rel="stylesheet" href="colors-light.css" />
     <link rel="stylesheet" href="/styles.css" />
     <link
       rel="stylesheet"
@@ -23,6 +23,9 @@
             <label id="pin-checkbox-label">
               <input type="checkbox" id="pin" /> Pin Preview
             </label>
+            <label>
+              <input type="checkbox" id="theme-toggle" /> Dark Mode
+            </label>
           </div>
         </div>
       </details>
@@ -34,7 +37,7 @@
     </div>
     <script type="module">
       import mermaid from "https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.2.1/mermaid.esm.mjs";
-      mermaid.initialize({ startonload: false, theme: "%s" });
+      mermaid.initialize({ startonload: false, theme: "default" });
       window.mermaid = mermaid;
     </script>
     <script src="/ws.js"></script>
