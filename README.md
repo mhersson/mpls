@@ -224,15 +224,16 @@ return {
         mpls = function(_, opts)
           local lspconfig = require("lspconfig")
           local configs = require("lspconfig.configs")
-          local util = require("lspconfig.util")
 
           if not configs.mpls then
             configs.mpls = {
               default_config = {
-                cmd = {"mpls", "--dark-mode", "--enable-emoji" },
-                filetypes = {"markdown"},
+                cmd = { "mpls", "--dark-mode", "--enable-emoji" },
+                filetypes = { "markdown" },
                 single_file_support = true,
-                root_dir = require("lspconfig").util.find_git_ancestor,
+                root_dir = function(startpath)
+                  return vim.fs.dirname(vim.fs.find(".git", { path = startpath or vim.fn.getcwd(), upward = true })[1])
+                end,
                 settings = {},
               },
               docs = {
