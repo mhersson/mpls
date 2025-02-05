@@ -1,27 +1,25 @@
 html {
   font-family: sans-serif;
-  line-height: 1.5em;
-  color: #333;
-  display: table;
-  width: 780px;
-  margin: auto;
+  line-height: 1.5;
+  color: var(--text-color);
+  background-color: var(--background-color);
   padding-bottom: 50px;
 }
 
-h1:after,
-h2:after,
-h3:after,
-h4:after,
-h5:after,
-h6:after {
+h1::after,
+h2::after,
+h3::after,
+h4::after,
+h5::after,
+h6::after {
   content: " ";
   display: block;
-  border: 1px solid #e9e9e9;
+  border: 1px solid var(--border-color);
 }
 
 body {
-  display: table-cell;
-  vertical-align: middle;
+  max-width: 787px;
+  margin: auto;
 }
 
 #header {
@@ -45,6 +43,16 @@ img {
 
 pre {
   padding: 10px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+code {
+  background-color: var(--code-background-color);
+}
+
+code.language-mermaid {
+  background-color: var(--background-color);
 }
 
 table,
@@ -52,41 +60,36 @@ th,
 td {
   border: 1px solid;
   border-collapse: collapse;
-  padding-left: 5px;
-  padding-right: 5px;
+  padding: 5px;
 }
 
 th {
   padding: 10px;
-  background-color: #f2f2f2;
+  background-color: var(--table-header-background);
 }
 
 tr:nth-child(even) {
-  background-color: #f2f2f2;
+  background-color: var(--even-row-background);
 }
 
 blockquote {
-  color: #777;
-  background: #f9f9f9;
-  border-left: 5px solid #ccc;
+  color: var(--blockquote-color);
+  background-color: var(--blockquote-background);
+  border-left: 5px solid var(--blockquote-border-color);
   margin: 0px;
   padding: 0.5em 10px;
 }
 
-blockquote p {
-  display: inline;
-}
-
 a {
+  color: var(--link-color);
   text-decoration: none;
-  color: #0366d6;
 }
 
 a:visited {
-  color: #6f42c1;
+  color: var(--link-visited-color);
 }
 
 a:hover {
-  color: #0056b3;
+  color: var(--link-hover-color);
   text-decoration: underline;
 }

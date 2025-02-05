@@ -30,8 +30,10 @@ var (
 	indexHTML string
 	//go:embed web/styles.css
 	stylesCSS string
-	//go:embed web/styles-dark.css
-	stylesDarkCSS string
+	//go:embed web/colors-dark.css
+	colorsDarkCSS string
+	//go:embed web/colors-light.css
+	colorsLightCSS string
 	//go:embed web/ws.js
 	websocketJS string
 
@@ -76,15 +78,15 @@ func New() *Server {
 		port = FixedPort
 	}
 
-	styles := "styles.css"
+	theme := "colors-light.css"
 	mermaidTheme := "default"
 
 	if DarkMode {
-		styles = "styles-dark.css"
+		theme = "colors-dark.css"
 		mermaidTheme = "dark"
 	}
 
-	indexHTML = fmt.Sprintf(indexHTML, styles, mermaidTheme)
+	indexHTML = fmt.Sprintf(indexHTML, theme, mermaidTheme)
 
 	srv := &http.Server{
 		Addr:        fmt.Sprintf(":%d", port),

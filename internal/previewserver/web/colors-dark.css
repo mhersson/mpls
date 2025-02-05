@@ -1,0 +1,15 @@
+/* Dark colors CSS */
+:root {
+  --text-color: #dedede;
+  --background-color: #0d0d12;
+  --border-color: #444d56;
+  --code-background-color: #252525;
+  --table-header-background: #1d1d1d;
+  --even-row-background: #252525;
+  --blockquote-color: #c9d1d9;
+  --blockquote-background: #1d1d1d;
+  --blockquote-border-color: #444d56;
+  --link-color: #58a6ff;
+  --link-visited-color: #58a6ff;
+  --link-hover-color: #1f6feb;
+}
