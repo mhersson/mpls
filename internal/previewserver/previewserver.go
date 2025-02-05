@@ -101,25 +101,11 @@ func New() *Server {
 }
 
 func (s *Server) Start() {
-	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, indexHTML)
-	})
-
-	http.HandleFunc("/styles.css", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/css")
-		fmt.Fprint(w, stylesCSS)
-	})
-
-	http.HandleFunc("/styles-dark.css", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/css")
-		fmt.Fprint(w, stylesDarkCSS)
-	})
-
-	http.HandleFunc("/ws.js", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/javascript")
-		fmt.Fprintf(w, websocketJS, s.Port)
-	})
+	http.HandleFunc("/", handleResponse("text/html", s.InitialContent))
+	http.HandleFunc("/styles.css", handleResponse("text/css", stylesCSS))
+	http.HandleFunc("/colors-light.css", handleResponse("text/css", colorsLightCSS))
+	http.HandleFunc("/colors-dark.css", handleResponse("text/css", colorsDarkCSS))
+	http.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
 
 	http.HandleFunc("/ws", handleWebSocket)
 
@@ -192,6 +178,13 @@ func (s *Server) Stop() {
 	// Attempt to gracefully shut down the server
 	if err := s.Server.Shutdown(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "%s error shutting down server: %v\n", logTime(), err)
+	}
+}
+
+func handleResponse(contentType, response string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", contentType)
+		fmt.Fprint(w, response)
 	}
 }
 

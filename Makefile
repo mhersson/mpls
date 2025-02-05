@@ -4,7 +4,7 @@
 
 SHELL=bash
 
-VERSION="v0.9.2"
+VERSION="v0.9.3"
 
 # make will interpret non-option arguments in the command line as targets.
 # This turns them into do-nothing targets, so make won't complain:
