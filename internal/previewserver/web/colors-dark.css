@@ -1,15 +1,15 @@
 /* Dark colors CSS */
 :root {
-  --text-color: #dedede;
-  --background-color: #0d0d12;
-  --border-color: #444d56;
-  --code-background-color: #252525;
-  --table-header-background: #1d1d1d;
-  --even-row-background: #252525;
-  --blockquote-color: #c9d1d9;
-  --blockquote-background: #1d1d1d;
-  --blockquote-border-color: #444d56;
+  --text-color: #c9d1d9;
+  --background-color: #0d1117;
+  --border-color: #30363d;
+  --code-background-color: #21262d;
+  --table-header-background: #161b22;
+  --even-row-background: #21262d;
+  --blockquote-color: #a0aec0;
+  --blockquote-background: #161b22;
+  --blockquote-border-color: #30363d;
   --link-color: #58a6ff;
-  --link-visited-color: #58a6ff;
+  --link-visited-color: #d2a8ff;
   --link-hover-color: #1f6feb;
 }

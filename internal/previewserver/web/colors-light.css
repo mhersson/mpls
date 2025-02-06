@@ -1,14 +1,14 @@
 /* Light colors CSS */
 :root {
-  --text-color: #333;
-  --background-color: #f2f2f2;
-  --border-color: #e9e9e9;
-  --code-background-color: #f2f2f2;
-  --table-header-background: #ccc;
-  --even-row-background: #ddd;
-  --blockquote-color: #777;
-  --blockquote-background: #e2e2e2;
-  --blockquote-border-color: #777;
+  --text-color: #24292e;
+  --background-color: #ffffff;
+  --border-color: #e1e4e8;
+  --code-background-color: #f6f8fa;
+  --table-header-background: #f6f8fa;
+  --even-row-background: #f9f9f9;
+  --blockquote-color: #6a737d;
+  --blockquote-background: #f6f8fa;
+  --blockquote-border-color: #d1d5da;
   --link-color: #0366d6;
   --link-visited-color: #6f42c1;
   --link-hover-color: #0056b3;
