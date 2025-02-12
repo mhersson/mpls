@@ -73,6 +73,18 @@ If you want a Goldmark extension added to `mpls` please look
 [Mermaid.js](https://mermaid.js.org/), a powerful JavaScript library for
 generating diagrams from text definitions.
 
+### PlantUML
+
+`mpls` supports [PlantUML](https://plantuml.com/), a powerful tool for creating
+UML diagrams from plain text descriptions. This integration allows you to easily
+embed PlantUML code in your markdown files. Diagrams are rendered upon saving
+and only if the UML code has changed.
+
+*Please note that external HTTP calls are made only when UML code is present in
+the markdown and has changed, as well as when a file is opened. For users
+concerned about security, you can host a PlantUML server locally and specify the
+`--plantuml-server` flag to ensure that no external calls are made.*
+
 ## Install
 
 The easiest way to install `mpls` is to download one of the prebuilt
@@ -156,19 +168,22 @@ This should display the version of the `mpls` executable.
 
 The following options can be used when starting `mpls`:
 
-| Flag           | Description |
-|----------------|-------------|
-| `--browser`    | Specify web browser to use for the preview. **(1)**
-| `--code-style` | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
-| `--dark-mode`  | Enable dark mode |
-| `--enable-emoji` | Enable emoji support |
-| `--enable-footnotes` | Enable footnotes |
-| `--enable-wikilinks` | Enable rendering of [[wiki]] -style links |
-| `--full-sync`  | Sync the entire document for every change being made. **(3)** |
-| `--no-auto`    | Don't open preview automatically |
-| `--port`       | Set a fixed port for the preview server |
-| `--version`    | Displays the mpls version. |
-| `--help`       | Displays help information about the available options. |
+| Flag                     | Description                                                           |
+| ------------------------ | --------------------------------------------------------------------- |
+| `--browser`              | Specify web browser to use for the preview. **(1)**                   |
+| `--code-style`           | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
+| `--dark-mode`            | Enable dark mode                                                      |
+| `--enable-emoji`         | Enable emoji support                                                  |
+| `--enable-footnotes`     | Enable footnotes                                                      |
+| `--enable-wikilinks`     | Enable rendering of [[wiki]] -style links                             |
+| `--full-sync`            | Sync the entire document for every change being made. **(3)**         |
+| `--no-auto`              | Don't open preview automatically                                      |
+| `--plantuml-disable-tls` | Disable encryption on requests to the PlantUML server                 |
+| `--plantuml-server`      | Specify the host for the PlantUML server                              |
+| `--plantuml-path`        | Specify the base path for the PlantUML server                         |
+| `--port`                 | Set a fixed port for the preview server                               |
+| `--version`              | Displays the mpls version.                                            |
+| `--help`                 | Displays help information about the available options.                |
 
  1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS
     name of Application e.g "Safari" or "Microsoft Edge", on Windows use full

@@ -6,6 +6,7 @@ import (
 	"github.com/mhersson/mpls/internal/mpls"
 	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
+	"github.com/mhersson/mpls/pkg/plantuml"
 	"github.com/spf13/cobra"
 )
 
@@ -42,4 +43,7 @@ func init() {
 	command.Flags().BoolVar(&mpls.TextDocumentUseFullSync, "full-sync", false, "Sync entire document for every change")
 	command.Flags().BoolVar(&noAuto, "no-auto", false, "Don't open preview automatically")
 	command.Flags().IntVar(&previewserver.FixedPort, "port", 0, "Set a fixed port for the preview server")
+	command.Flags().StringVar(&plantuml.BasePath, "plantuml-path", "plantuml", "Specify the base path for the plantuml server")
+	command.Flags().StringVar(&plantuml.Server, "plantuml-server", "www.plantuml.com", "Specify the host for the plantuml server")
+	command.Flags().BoolVar(&plantuml.DisableTLS, "plantuml-disable-tls", false, "Disable encryption on requests to the plantuml server")
 }

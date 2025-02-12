@@ -11,10 +11,10 @@ import (
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
-func WorkspaceExecuteCommand(context *glsp.Context, param *protocol.ExecuteCommandParams) (any, error) {
+func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandParams) (any, error) {
 	switch param.Command {
 	case "open-preview":
-		_ = protocol.Trace(context, protocol.MessageTypeInfo,
+		_ = protocol.Trace(ctx, protocol.MessageTypeInfo,
 			log("WorkspaceExecuteCommand - Open preview: "+currentURI))
 
 		err := previewserver.Openbrowser(fmt.Sprintf("http://localhost:%d", previewServer.Port), previewserver.Browser)
@@ -32,6 +32,11 @@ func WorkspaceExecuteCommand(context *glsp.Context, param *protocol.ExecuteComma
 		}
 
 		html, meta := parser.HTML(content)
+		html, err = insertPlantumlDiagram(html, true)
+		if err != nil {
+			_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("WorkspaceExcueCommand - Open preview: "+err.Error()))
+		}
+
 		previewServer.Update(filename, html, "", meta)
 	default:
 		return nil, errors.New("unknow  command")
