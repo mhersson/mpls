@@ -21,6 +21,32 @@ document.addEventListener("DOMContentLoaded", () => {
     // console.log(renderedHtml);
   }
 
+  function initializeImageModal() {
+    const images = document.querySelectorAll("img");
+
+    const modal = document.getElementById("imageModal");
+    const modalImage = document.getElementById("modalImage");
+    const closeModal = document.getElementById("closeModal");
+
+    images.forEach((img) => {
+      img.addEventListener("click", function () {
+        modalImage.src = img.src;
+        modal.style.display = "flex";
+      });
+    });
+
+    closeModal.addEventListener("click", function () {
+      modal.style.display = "none";
+    });
+
+    // Close the modal when clicking outside the image
+    modal.addEventListener("click", function (event) {
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    });
+  }
+
   const renderMermaid = async () => {
     const mermaidElements = document.querySelectorAll(".language-mermaid");
     if (mermaidElements.length > 0) {
@@ -79,6 +105,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateContent(renderedHtml);
     saveContentToLocalStorage(renderedHtml);
+
+    initializeImageModal();
 
     renderMermaid();
 

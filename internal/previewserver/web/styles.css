@@ -41,6 +41,33 @@ img {
   max-width: 100%;
 }
 
+#imageModal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+#closeModal {
+  color: white;
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+#modalImage {
+  max-width: 95%;
+  max-height: 95%;
+}
+
 pre {
   padding: 10px;
   max-width: 100%;
