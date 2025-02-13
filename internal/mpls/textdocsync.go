@@ -236,7 +236,9 @@ func insertPlantumlDiagram(data string, generate bool) (string, error) {
 			builder.WriteString(p.Diagram)
 		} else {
 			// Use existing until we save and generate a new one
-			builder.WriteString(plantumls[numDiagrams-1].Diagram)
+			if len(plantumls) >= numDiagrams {
+				builder.WriteString(plantumls[numDiagrams-1].Diagram)
+			}
 		}
 
 		start += e + 13
