@@ -16,4 +16,5 @@ func init() {
 	Handler.TextDocumentDidSave = TextDocumentDidSave
 	Handler.TextDocumentDidClose = TextDocumentDidClose
 	Handler.WorkspaceExecuteCommand = WorkspaceExecuteCommand
+	Handler.WorkspaceDidChangeConfiguration = WorkspaceDidChangeConfiguration
 }

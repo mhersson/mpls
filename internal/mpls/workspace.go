@@ -44,3 +44,7 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 
 	return nil, nil
 }
+
+func WorkspaceDidChangeConfiguration(_ *glsp.Context, _ *protocol.DidChangeConfigurationParams) error {
+	return nil
+}
