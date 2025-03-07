@@ -31,9 +31,13 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 	filename = filepath.Base(currentURI)
 	plantumls = []plantuml.Plantuml{}
 
-	doc := params.TextDocument
+	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+params.TextDocument.URI))
 
-	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+doc.URI))
+	if !previewserver.OpenBrowserOnStartup && content == "" {
+		return nil
+	}
+
+	doc := params.TextDocument
 
 	content = doc.Text
 
@@ -234,11 +238,9 @@ func insertPlantumlDiagram(data string, generate bool) (string, error) {
 				plantumls[numDiagrams-1] = p
 			}
 			builder.WriteString(p.Diagram)
-		} else {
+		} else if len(plantumls) >= numDiagrams {
 			// Use existing until we save and generate a new one
-			if len(plantumls) >= numDiagrams {
-				builder.WriteString(plantumls[numDiagrams-1].Diagram)
-			}
+			builder.WriteString(plantumls[numDiagrams-1].Diagram)
 		}
 
 		start += e + 13
