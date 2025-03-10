@@ -38,6 +38,7 @@ making it an ideal choice for `mpls`.
 experience:
 
 **Always enabled**
+
 - Github Flavored Markdown: Goldmark's built in GFM extension ensures Table,
   Strikethrough, Linkify and TaskList elements are displayed correctly.
 - Image Rendering: The [img64](https://github.com/tenkoh/goldmark-img64)
@@ -45,9 +46,9 @@ experience:
   files.
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
-  KaTeX.  *Please note that the KaTeX extension requires `cgo` and will only be
+  KaTeX. _Please note that the KaTeX extension requires `cgo` and will only be
   included if `mpls` is built with `CGO_ENABLED=1`. This option is not enabled
-  for the prebuilt binaries.*
+  for the prebuilt binaries._
 - Metadata: The [meta](https://github.com/yuin/goldmark-meta) extension parses
   metadata in YAML format.
 - Syntax highlighting: The
@@ -55,13 +56,14 @@ experience:
   syntax-highlighting to the fenced code blocks.
 
 **Optional**
+
 - Emoji: The [emoji](https://github.com/yuin/goldmark-emoji)
-extension enables emoji support.
+  extension enables emoji support.
 - Footnotes: The [footnote](https://michelf.ca/projects/php-markdown/extra/#footnotes)
-extension enables footnotes.
+  extension enables footnotes.
 - Wikilinks rendering: The
   [wikilink](https://github.com/abhinav/goldmark-wikilink) extension enables
-  parsing and rendering of [[wiki]] -style links. (*Note:* image preview does
+  parsing and rendering of [[wiki]] -style links. (_Note:_ image preview does
   not work for wikilinks)
 
 If you want a Goldmark extension added to `mpls` please look
@@ -80,10 +82,10 @@ UML diagrams from plain text descriptions. This integration allows you to easily
 embed PlantUML code in your markdown files. Diagrams are rendered upon saving
 and only if the UML code has changed.
 
-*Please note that external HTTP calls are made only when UML code is present in
+_Please note that external HTTP calls are made only when UML code is present in
 the markdown and has changed, as well as when a file is opened. For users
 concerned about security, you can host a PlantUML server locally and specify the
-`--plantuml-server` flag to ensure that no external calls are made.*
+`--plantuml-server` flag to ensure that no external calls are made._
 
 ## Install
 
@@ -100,6 +102,7 @@ page](https://github.com/mhersson/mpls/releases).
    ```
 
    (Replace `<version>` with the actual version of the release.)
+
 3. Copy the extracted binary to a directory that is in your system's PATH. For example:
 
    ```bash
@@ -114,43 +117,44 @@ no prebuilt binaries are available for your architecture, follow these steps:
 
 1. **Clone the repository**:
 
-    ```bash
-    git clone https://github.com/mhersson/mpls.git
-    cd mpls
-    ```
+   ```bash
+   git clone https://github.com/mhersson/mpls.git
+   cd mpls
+   ```
 
 2. **Build the project**:
 
-    You can build the project using the following command:
+   You can build the project using the following command:
 
-    *To include the math extension, you need to set `CGO_ENABLED=1` before running this command:*
-    ```bash
-    make build
-    ```
+   _To include the math extension, you need to set `CGO_ENABLED=1` before running this command:_
 
-    This command will compile the source code and create an executable.
+   ```bash
+   make build
+   ```
+
+   This command will compile the source code and create an executable.
 
 3. **Install the executable**:
 
-    You have two options to install the executable:
+   You have two options to install the executable:
 
-    - **Option 1: Copy the executable to your PATH**:
+   - **Option 1: Copy the executable to your PATH**:
 
-      After building, you can manually copy the executable to a directory that is in your system's PATH. For example:
+     After building, you can manually copy the executable to a directory that is in your system's PATH. For example:
 
-      ```bash
-      sudo cp mpls /usr/local/bin/
-      ```
+     ```bash
+     sudo cp mpls /usr/local/bin/
+     ```
 
-    - **Option 2: Use `make install` if you are using GOPATH**:
+   - **Option 2: Use `make install` if you are using GOPATH**:
 
-      If the GOPATH is in your PATH, you can run:
+     If the GOPATH is in your PATH, you can run:
 
-      ```bash
-      make install
-      ```
+     ```bash
+     make install
+     ```
 
-      This will install the executable to your `$GOPATH/bin` directory.
+     This will install the executable to your `$GOPATH/bin` directory.
 
 </details>
 
@@ -185,19 +189,18 @@ The following options can be used when starting `mpls`:
 | `--version`              | Displays the mpls version.                                            |
 | `--help`                 | Displays help information about the available options.                |
 
- 1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS
-    name of Application e.g "Safari" or "Microsoft Edge", on Windows use full
-    path. On WSL, specify the executable as "explorer.exe" to start the default 
-    Windows browser.
- 2. The goldmark-highlighting extension use
-    [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
-    all available styles in Chroma are available here. Default style is
-    `catppuccin-mocha`.
- 3. Has a small impact on performance, but makes sure that commands like
-    `reflow` in Helix, does not impact the accuracy of the preview.
-    Additionally, it disables `mpls'` efforts to scroll to the closest section
-    header when editing.
-
+1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS
+   name of Application e.g "Safari" or "Microsoft Edge", on Windows use full
+   path. On WSL, specify the executable as "explorer.exe" to start the default
+   Windows browser.
+2. The goldmark-highlighting extension use
+   [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
+   all available styles in Chroma are available here. Default style is
+   `catppuccin-mocha`.
+3. Has a small impact on performance, but makes sure that commands like
+   `reflow` in Helix, does not impact the accuracy of the preview.
+   Additionally, it disables `mpls'` efforts to scroll to the closest section
+   header when editing.
 
 ## Configuration examples
 
@@ -247,7 +250,9 @@ return {
                 filetypes = { "markdown" },
                 single_file_support = true,
                 root_dir = function(startpath)
-                  return vim.fs.dirname(vim.fs.find(".git", { path = startpath or vim.fn.getcwd(), upward = true })[1])
+                  local git_root = vim.fs.find(".git", { path = startpath or
+                    vim.fn.getcwd(), upward = true })
+                  return git_root[1] and vim.fs.dirname(git_root[1]) or startpath
                 end,
                 settings = {},
               },
@@ -261,6 +266,33 @@ live preview of markdown files in your browser while you edit them in your favor
             }
           end
           lspconfig.mpls.setup(opts)
+          vim.api.nvim_create_user_command('MplsOpenPreview', function()
+            local clients = vim.lsp.get_active_clients()
+            local mpls_client = nil
+
+            for _, client in ipairs(clients) do
+              if client.name == "mpls" then
+                mpls_client = client
+                break
+              end
+            end
+
+            -- Only execute the command if the MPLS client is found
+            if mpls_client then
+              local params = {
+                command = 'open-preview',
+                arguments = {}
+              }
+              mpls_client.request('workspace/executeCommand', params,
+                function(err, result)
+                if err then
+                  print("Error executing command: " .. err.message)
+                end
+              end)
+            else
+              print("mpls is not attached to the current buffer.")
+            end
+          end, {})
         end,
       },
     },
@@ -293,7 +325,7 @@ live preview of markdown files in your browser while you edit them in your favor
      "workspace/executeCommand"
      (list :command "open-preview")))
 
-  (defcustom lsp-mpls-server-command "mpls"
+  (defcustom mpls-server-command "mpls"
     "The binary (or full path to binary) which executes the server."
     :type 'string
     :group 'lsp-mpls)
