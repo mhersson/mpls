@@ -28,6 +28,7 @@ users of Visual Studio Code, there is also a dedicated extension available at
 ## Features
 
 - Live Preview: Instantly see your Markdown changes reflected in the browser.
+- Theme toggle for switching between light and dark mode.
 
 ### Built with Goldmark
 
@@ -226,7 +227,7 @@ name = "markdown"
 
 [language-server.mpls]
 command = "mpls"
-args = ["--dark-mode", "--enable-emoji"]
+args = ["--enable-emoji"]
 # An example args entry showing how to specify flags with values:
 # args = ["--port", "8080", "--browser", "google-chrome"]
 ```
@@ -254,7 +255,7 @@ return {
           if not configs.mpls then
             configs.mpls = {
               default_config = {
-                cmd = { "mpls", "--dark-mode", "--enable-emoji" },
+                cmd = { "mpls", "--enable-emoji" },
                 filetypes = { "markdown" },
                 single_file_support = true,
                 root_dir = function(startpath)
@@ -345,7 +346,6 @@ live preview of markdown files in your browser while you edit them in your favor
                                         (or (executable-find lsp-mpls-server-command)
                                             (lsp-package-path 'mpls)
                                             "mpls")
-                                        "--dark-mode"
                                         "--enable-emoji"
                                         )))
                     :activation-fn (lsp-activate-on "markdown")
