@@ -3,8 +3,9 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mhersson/mpls)](https://goreportcard.com/report/github.com/mhersson/mpls)
 
-Built using [GLSP](https://github.com/tliron/glsp) and [Goldmark](https://github.com/yuin/goldmark),
-and heavily inspired by [mdpls](https://github.com/euclio/mdpls)
+Built using [GLSP](https://github.com/tliron/glsp) and
+[Goldmark](https://github.com/yuin/goldmark), and heavily inspired by
+[mdpls](https://github.com/euclio/mdpls)
 
 ## Overview
 
@@ -14,11 +15,13 @@ enhance your Markdown editing experience. With live preview in the browser,
 you're writing documentation or creating notes, `mpls` provides a seamless and
 interactive environment.
 
-Built with terminal editors in mind, such as (Neo)vim and Helix, which do not have
-built-in Markdown rendering, `mpls` bridges the gap by providing a live preview
-feature that works alongside these editors. Additionally, `mpls` is compatible
-with any editor that supports the Language Server Protocol (LSP), making it a
-versatile tool for Markdown editing across various platforms.
+Built with terminal editors in mind, such as (Neo)vim and Helix, which do not
+have built-in Markdown rendering, `mpls` bridges the gap by providing a live
+preview feature that works alongside these editors. Additionally, `mpls` is
+compatible with any editor that supports the Language Server Protocol (LSP),
+making it a versatile tool for Markdown editing across various platforms. For
+users of Visual Studio Code, there is also a dedicated extension available at
+[mpls-vscode-client](https://github.com/mhersson/mpls-vscode-client),
 
 ![demo](screenshots/demo.gif)
 
@@ -34,8 +37,8 @@ making it an ideal choice for `mpls`.
 
 #### Goldmark extensions
 
-`mpls` utilizes several of Goldmark's extensions to enhance the Markdown rendering
-experience:
+`mpls` utilizes several of Goldmark's extensions to enhance the Markdown
+rendering experience:
 
 **Always enabled**
 
@@ -57,16 +60,17 @@ experience:
 
 **Optional**
 
-- Emoji: The [emoji](https://github.com/yuin/goldmark-emoji)
-  extension enables emoji support.
-- Footnotes: The [footnote](https://michelf.ca/projects/php-markdown/extra/#footnotes)
+- Emoji: The [emoji](https://github.com/yuin/goldmark-emoji) extension enables
+  emoji support.
+- Footnotes: The
+  [footnote](https://michelf.ca/projects/php-markdown/extra/#footnotes)
   extension enables footnotes.
 - Wikilinks rendering: The
   [wikilink](https://github.com/abhinav/goldmark-wikilink) extension enables
   parsing and rendering of [[wiki]] -style links. (_Note:_ image preview does
   not work for wikilinks)
 
-If you want a Goldmark extension added to `mpls` please look
+If you want a new Goldmark extension added to `mpls` please look
 [here](https://github.com/mhersson/mpls/issues/4).
 
 ### Mermaid
@@ -89,9 +93,9 @@ concerned about security, you can host a PlantUML server locally and specify the
 
 ## Install
 
-The easiest way to install `mpls` is to download one of the prebuilt
-release binaries. You can find the latest releases on the [Releases
-page](https://github.com/mhersson/mpls/releases).
+The easiest way to install `mpls` is to download one of the prebuilt release
+binaries. You can find the latest releases on the
+[Releases page](https://github.com/mhersson/mpls/releases).
 
 1. Download the appropriate tar.gz file for your operating system.
 2. Extract the contents of the tar.gz file. You can do this using the following
@@ -103,7 +107,8 @@ page](https://github.com/mhersson/mpls/releases).
 
    (Replace `<version>` with the actual version of the release.)
 
-3. Copy the extracted binary to a directory that is in your system's PATH. For example:
+3. Copy the extracted binary to a directory that is in your system's PATH. For
+   example:
 
    ```bash
    sudo cp mpls /usr/local/bin/
@@ -126,7 +131,8 @@ no prebuilt binaries are available for your architecture, follow these steps:
 
    You can build the project using the following command:
 
-   _To include the math extension, you need to set `CGO_ENABLED=1` before running this command:_
+   _To include the math extension, you need to set `CGO_ENABLED=1` before
+   running this command:_
 
    ```bash
    make build
@@ -140,7 +146,8 @@ no prebuilt binaries are available for your architecture, follow these steps:
 
    - **Option 1: Copy the executable to your PATH**:
 
-     After building, you can manually copy the executable to a directory that is in your system's PATH. For example:
+     After building, you can manually copy the executable to a directory that is
+     in your system's PATH. For example:
 
      ```bash
      sudo cp mpls /usr/local/bin/
@@ -160,7 +167,8 @@ no prebuilt binaries are available for your architecture, follow these steps:
 
 **Verify the installation**:
 
-After installation, you can verify that `mpls` is installed correctly by running:
+After installation, you can verify that `mpls` is installed correctly by
+running:
 
 ```bash
 mpls --version
@@ -189,18 +197,18 @@ The following options can be used when starting `mpls`:
 | `--version`              | Displays the mpls version.                                            |
 | `--help`                 | Displays help information about the available options.                |
 
-1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS
-   name of Application e.g "Safari" or "Microsoft Edge", on Windows use full
-   path. On WSL, specify the executable as "explorer.exe" to start the default
-   Windows browser.
+1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS name
+   of Application e.g "Safari" or "Microsoft Edge", on Windows use full path. On
+   WSL, specify the executable as "explorer.exe" to start the default Windows
+   browser.
 2. The goldmark-highlighting extension use
    [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
    all available styles in Chroma are available here. Default style is
    `catppuccin-mocha`.
-3. Has a small impact on performance, but makes sure that commands like
-   `reflow` in Helix, does not impact the accuracy of the preview.
-   Additionally, it disables `mpls'` efforts to scroll to the closest section
-   header when editing.
+3. Has a small impact on performance, but makes sure that commands like `reflow`
+   in Helix, does not impact the accuracy of the preview. Additionally, it
+   disables `mpls'` efforts to scroll to the closest section header when
+   editing.
 
 ## Configuration examples
 
