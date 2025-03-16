@@ -3,10 +3,11 @@ package mpls
 import (
 	"time"
 
+	"github.com/mhersson/glsp"
+	protocol316 "github.com/mhersson/glsp/protocol_3_16"
+	protocol "github.com/mhersson/glsp/protocol_mpls"
+	serverPkg "github.com/mhersson/glsp/server"
 	"github.com/mhersson/mpls/internal/previewserver"
-	"github.com/tliron/glsp"
-	protocol "github.com/tliron/glsp/protocol_3_16"
-	serverPkg "github.com/tliron/glsp/server"
 
 	// Must include a backend implementation
 	// See CommonLog for other options: https://github.com/tliron/commonlog
@@ -15,8 +16,10 @@ import (
 
 const lsName = "Markdown Preview Language Server"
 
-var TextDocumentUseFullSync bool
-var Version string
+var (
+	TextDocumentUseFullSync bool
+	Version                 string
+)
 
 func log(message string) string {
 	return time.Now().Local().Format("2006-01-02 15:04:05") + " " + message
@@ -32,37 +35,37 @@ func Run() {
 }
 
 func initialize(context *glsp.Context, _ *protocol.InitializeParams) (any, error) {
-	protocol.SetTraceValue("message")
-	_ = protocol.Trace(context, protocol.MessageTypeInfo, log("Initializing "+lsName))
+	protocol316.SetTraceValue("message")
+	_ = protocol316.Trace(context, protocol316.MessageTypeInfo, log("Initializing "+lsName))
 
 	capabilities := Handler.CreateServerCapabilities()
 	if TextDocumentUseFullSync {
-		capabilities.TextDocumentSync = protocol.TextDocumentSyncKindFull
+		capabilities.TextDocumentSync = protocol316.TextDocumentSyncKindFull
 	}
 	capabilities.ExecuteCommandProvider.Commands = []string{"open-preview"}
 
 	return protocol.InitializeResult{
 		Capabilities: capabilities,
-		ServerInfo: &protocol.InitializeResultServerInfo{
+		ServerInfo: &protocol316.InitializeResultServerInfo{
 			Name:    lsName,
 			Version: &Version,
 		},
 	}, nil
 }
 
-func initialized(_ *glsp.Context, _ *protocol.InitializedParams) error {
+func initialized(_ *glsp.Context, _ *protocol316.InitializedParams) error {
 	return nil
 }
 
-func setTrace(_ *glsp.Context, params *protocol.SetTraceParams) error {
-	protocol.SetTraceValue(params.Value)
+func setTrace(_ *glsp.Context, params *protocol316.SetTraceParams) error {
+	protocol316.SetTraceValue(params.Value)
 
 	return nil
 }
 
 func shutdown(_ *glsp.Context) error {
 	previewServer.Stop()
-	protocol.SetTraceValue(protocol.TraceValueOff)
+	protocol316.SetTraceValue(protocol316.TraceValueOff)
 
 	return nil
 }

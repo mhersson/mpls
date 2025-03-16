@@ -4,11 +4,11 @@ go 1.23.3
 
 require (
 	github.com/FurqanSoftware/goldmark-katex v0.0.0-20230820031700-1c400212c1e1
-	github.com/gorilla/websocket v1.5.1
+	github.com/gorilla/websocket v1.5.3
+	github.com/mhersson/glsp v0.2.3
 	github.com/spf13/cobra v1.8.1
 	github.com/tenkoh/goldmark-img64 v0.1.2
 	github.com/tliron/commonlog v0.2.19
-	github.com/tliron/glsp v0.2.2
 	github.com/yuin/goldmark v1.7.8
 	github.com/yuin/goldmark-emoji v1.0.4
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc

@@ -10,11 +10,12 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/mhersson/glsp"
+	protocol "github.com/mhersson/glsp/protocol_3_16"
+	protocolmpls "github.com/mhersson/glsp/protocol_mpls"
 	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/mhersson/mpls/pkg/plantuml"
-	"github.com/tliron/glsp"
-	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 var (
@@ -267,4 +268,31 @@ func extractPlantUMLSection(text string) (int, int) {
 	endIndex += startIndex + len(startDelimiter)
 
 	return startIndex, endIndex
+}
+
+func MplsEditorDidChangeFocus(ctx *glsp.Context, params *protocolmpls.EditorDidChangeFocusParams) error {
+	var err error
+	plantumls = []plantuml.Plantuml{}
+
+	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("MplsEditorDidChangedFocus: "+params.URI))
+
+	if !previewserver.OpenBrowserOnStartup && content == "" {
+		return nil
+	}
+
+	filename = filepath.Base(currentURI)
+	content, err = loadDocument(params.URI)
+	if err != nil {
+		return err
+	}
+
+	html, meta := parser.HTML(content)
+	html, err = insertPlantumlDiagram(html, true)
+	if err != nil {
+		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("MplsEditorDidChangeFocus - plantuml: "+err.Error()))
+	}
+
+	previewServer.Update(filename, html, "", meta)
+
+	return nil
 }
