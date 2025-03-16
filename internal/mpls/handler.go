@@ -17,5 +17,5 @@ func init() {
 	Handler.TextDocumentDidClose = TextDocumentDidClose
 	Handler.WorkspaceExecuteCommand = WorkspaceExecuteCommand
 	Handler.WorkspaceDidChangeConfiguration = WorkspaceDidChangeConfiguration
-	Handler.MplsEditorDidChangeFocus = MplsEditorDidChangeFocus
+	Handler.MplsEditorDidChangeFocus = EditorDidChangeFocus
 }
