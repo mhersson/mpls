@@ -351,14 +351,46 @@ live preview of markdown files in your browser while you edit them in your favor
                     :activation-fn (lsp-activate-on "markdown")
                     :initialized-fn (lambda (workspace)
                                       (with-lsp-workspace workspace
-                                                          (lsp--set-configuration
-                                                          (lsp-configuration-section "mpls"))
-                                                          ))
+                                        (lsp--set-configuration
+                                        (lsp-configuration-section "mpls"))
+                                        ))
                     ;; Priority and add-on? are not needed,
                     ;; but makes mpls work alongside other lsp servers like marksman
                     :priority 1
                     :add-on? t
-                    :server-id 'mpls)))
+                    :server-id 'mpls))
+
+  ;; Send mpls/editorDidChangeFocus events
+  (defvar last-focused-markdown-buffer nil
+    "Tracks the last markdown buffer that had focus.")
+
+  (defun send-markdown-focus-notification ()
+    "Send an event when focus changes to a markdown buffer."
+    (when (and (eq major-mode 'markdown-mode)
+               (not (eq (current-buffer) last-focused-markdown-buffer))
+               lsp--buffer-workspaces)
+      (setq last-focused-markdown-buffer (current-buffer))
+
+      ;; Get the full file path and convert it to a URI
+      (let* ((file-name (buffer-file-name))
+             (uri (lsp--path-to-uri file-name)))
+        ;; Send notification
+        (lsp-notify "mpls/editorDidChangeFocus"
+                    (list :uri uri
+                          :fileName file-name)))))
+
+  (defun setup-markdown-focus-tracking ()
+    "Setup tracking for markdown buffer focus changes."
+    (add-hook 'buffer-list-update-hook
+              (lambda ()
+                (let ((current-window-buffer (window-buffer (selected-window))))
+                  (when (and (eq current-window-buffer (current-buffer))
+                             (eq major-mode 'markdown-mode)
+                             (buffer-file-name))
+                    (send-markdown-focus-notification))))))
+
+  ;; Initialize the tracking
+  (setup-markdown-focus-tracking))
 
 ```
 
