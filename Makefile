@@ -55,11 +55,7 @@ vet: ## Run go vet
 	go vet ./...
 
 build: fmt vet ## Build the binary.
-	@if [ "$CGO_ENABLED" = "1" ]; then \
-		go build -tags cgo -ldflags $(LDFLAGS) .; \
-	else \
-		go build -ldflags $(LDFLAGS) .; \
-	fi
+	@go build -ldflags $(LDFLAGS) .
 
 install: ## Install the binary.
 	@go install -ldflags $(LDFLAGS)
