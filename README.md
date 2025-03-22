@@ -93,8 +93,14 @@ concerned about security, you can host a PlantUML server locally and specify the
 
 ## Install
 
-The easiest way to install `mpls` is to download one of the prebuilt release
-binaries. You can find the latest releases on the
+If you already have go installed you can just run:
+
+```bash
+go install github.com/mhersson/mpls@latest
+```
+
+If not the easiest way to install `mpls` is to download one of the prebuilt
+release binaries. You can find the latest releases on the
 [Releases page](https://github.com/mhersson/mpls/releases).
 
 1. Download the appropriate tar.gz file for your operating system.
@@ -117,8 +123,9 @@ binaries. You can find the latest releases on the
 <details>
 <summary>Build From Source</summary>
 
-If you prefer to build from source, if you want the KaTeX math extension, or if
-no prebuilt binaries are available for your architecture, follow these steps:
+If you otherwise prefer to build manually from source, if you want the KaTeX
+math extension, or if no prebuilt binaries are available for your architecture,
+follow these steps:
 
 1. **Clone the repository**:
 

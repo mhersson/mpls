@@ -17,11 +17,12 @@ builds:
   - arm64
   ldflags:
   - -s -w
-  - -X github.com/mhersson/mpls/cmd.Version={{ .Tag }}
-  - -X github.com/mhersson/mpls/internal/mpls.Version={{ .Tag }}
+  - -X github.com/mhersson/vectorsigma/cmd.Version={{ .Tag }}
+  - -X github.com/mhersson/vectorsigma/cmd.CommitSHA={{ .ShortCommit }}
+  - -X github.com/mhersson/vectorsigma/cmd.BuildTime={{ .Date }}
 
 archives:
-- format: tar.gz
+- formats: tar.gz
   format_overrides:
   - goos: windows
-    format: zip
+    formats: zip

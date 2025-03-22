@@ -1,13 +1,13 @@
-name: Release Go project
+name: Release
 
 on:
   push:
     tags:
-    - "v*" # triggers only if push new tag version
+    - "v*"
 
 jobs:
   build:
-    name: GoReleaser build
+    name: build release
     runs-on: ubuntu-latest
 
     steps:
@@ -22,9 +22,9 @@ jobs:
         go-version: stable
 
     - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v5
+      uses: goreleaser/goreleaser-action@v6
       with:
-        version: latest
+        version: '~> v2'
         args: release --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}

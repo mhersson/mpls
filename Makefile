@@ -2,9 +2,12 @@
 # Makefile: Markdown Preview Language Server
 #
 
-SHELL=bash
+shell=bash
 
-VERSION="v0.13.1"
+VERSION = $(shell git describe --tags --always)
+COMMIT = $(shell git rev-parse --short HEAD)
+BUILDTIME = $(shell date -u '+%Y-%m-%dT%H:%M:%SZ'.1.0)
+
 
 # make will interpret non-option arguments in the command line as targets.
 # This turns them into do-nothing targets, so make won't complain:
@@ -18,6 +21,8 @@ endif
 
 LDFLAGS="-s -w \
 -X github.com/mhersson/mpls/cmd.Version=$(VERSION) \
+-X github.com/mhersson/mpls/cmd.CommitSHA=$(COMMIT) \
+-X github.com/mhersson/mpls/cmd.BuildTime=$(BUILDTIME) \
 -X github.com/mhersson/mpls/internal/mpls.Version=$(VERSION)"
 
 all: build

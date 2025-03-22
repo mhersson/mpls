@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/mhersson/mpls/internal/mpls"
 	"github.com/mhersson/mpls/internal/previewserver"
@@ -11,19 +13,43 @@ import (
 )
 
 var (
-	Version string
-	noAuto  bool
+	noAuto    bool
+	Version   = "dev"
+	CommitSHA = "unknown"
+	BuildTime = "unknown"
 )
 
 var command = &cobra.Command{
 	Use:     "mpls",
 	Short:   "Markdown Preview Language Server",
-	Version: Version,
+	Version: getVersionInfo(),
 	Run: func(cmd *cobra.Command, _ []string) {
-		cmd.Printf("mpls %s - press Ctrl+D to quit.\n", Version)
+		cmd.Printf("mpls %s - press Ctrl+D to quit.\n", cmd.Version)
 		previewserver.OpenBrowserOnStartup = !noAuto
 		mpls.Run()
 	},
+}
+
+func getVersionInfo() string {
+	if Version == "dev" {
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, setting := range info.Settings {
+				if setting.Key == "vcs.revision" {
+					CommitSHA = setting.Value[:8]
+				}
+				if setting.Key == "vcs.time" {
+					BuildTime = setting.Value
+				}
+			}
+
+			Version = info.Main.Version
+			if Version == "(devel)" {
+				return Version
+			}
+		}
+	}
+
+	return fmt.Sprintf("%s (commit: %s, built at: %s)", Version, CommitSHA, BuildTime)
 }
 
 func Execute() {
