@@ -99,7 +99,7 @@ If you already have go installed you can just run:
 go install github.com/mhersson/mpls@latest
 ```
 
-If not the easiest way to install `mpls` is to download one of the prebuilt
+If not, the easiest way to install `mpls` is to download one of the prebuilt
 release binaries. You can find the latest releases on the
 [Releases page](https://github.com/mhersson/mpls/releases).
 
