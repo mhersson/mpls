@@ -1,7 +1,8 @@
 # Markdown Preview Language Server
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mhersson/mpls)](https://goreportcard.com/report/github.com/mhersson/mpls)
+[![GitHub release](https://img.shields.io/github/v/release/mhersson/mpls)](https://github.com/mhersson/vectorsigma/mpls)
 
 Built using [GLSP](https://github.com/tliron/glsp) and
 [Goldmark](https://github.com/yuin/goldmark), and heavily inspired by
