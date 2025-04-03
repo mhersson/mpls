@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 	"unicode"
@@ -46,7 +45,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 		return err
 	}
 
-	html, meta := parser.HTML(content)
+	html, meta := parser.HTML(content, currentURI)
 	html, err = insertPlantumlDiagram(html, true)
 	if err != nil {
 		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
@@ -82,7 +81,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 			content = content[:startIndex] + c.Text + content[endIndex:]
 
 			currentSection := findSection(content, startIndex)
-			html, meta := parser.HTML(content)
+			html, meta := parser.HTML(content, currentURI)
 			html, err = insertPlantumlDiagram(html, switchedDocument)
 			if err != nil {
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
@@ -90,7 +89,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 
 			previewServer.Update(filename, html, currentSection, meta)
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
-			html, meta := parser.HTML(c.Text)
+			html, meta := parser.HTML(c.Text, currentURI)
 			html, err = insertPlantumlDiagram(html, false)
 			if err != nil {
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
@@ -111,7 +110,7 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 		return err
 	}
 
-	html, meta := parser.HTML(content)
+	html, meta := parser.HTML(content, currentURI)
 	html, err = insertPlantumlDiagram(html, true)
 	if err != nil {
 		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
@@ -127,14 +126,7 @@ func TextDocumentDidClose(_ *glsp.Context, _ *protocol.DidCloseTextDocumentParam
 }
 
 func loadDocument(uri string) (string, error) {
-	f := strings.TrimPrefix(uri, "file://")
-
-	if runtime.GOOS == "windows" {
-		f = strings.TrimPrefix(uri, "file:///")
-		f = filepath.FromSlash(f)
-		f = strings.Replace(f, "%3A", ":", 1)
-		f = strings.ReplaceAll(f, "%20", " ")
-	}
+	f := parser.GetNormalizedPath(uri)
 
 	c, err := os.ReadFile(f)
 	if err != nil {

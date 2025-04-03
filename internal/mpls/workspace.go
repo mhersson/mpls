@@ -31,7 +31,7 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 			return nil, err
 		}
 
-		html, meta := parser.HTML(content)
+		html, meta := parser.HTML(content, currentURI)
 		html, err = insertPlantumlDiagram(html, true)
 		if err != nil {
 			_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("WorkspaceExcueCommand - Open preview: "+err.Error()))

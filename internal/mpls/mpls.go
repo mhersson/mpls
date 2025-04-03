@@ -33,7 +33,7 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 	filename = filepath.Base(params.URI)
 	currentURI = params.URI
 
-	html, meta := parser.HTML(content)
+	html, meta := parser.HTML(content, currentURI)
 	html, err = insertPlantumlDiagram(html, true)
 	if err != nil {
 		_ = protocol316.Trace(ctx, protocol316.MessageTypeWarning, log("MplsEditorDidChangeFocus - plantuml: "+err.Error()))
