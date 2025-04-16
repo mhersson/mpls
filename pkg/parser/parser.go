@@ -25,10 +25,10 @@ var (
 )
 
 func getDocDir(uri string) string {
-	return filepath.Dir(GetNormalizedPath(uri))
+	return filepath.Dir(NormalizePath(uri))
 }
 
-func GetNormalizedPath(uri string) string {
+func NormalizePath(uri string) string {
 	f := strings.TrimPrefix(uri, "file://")
 
 	if runtime.GOOS == "windows" {

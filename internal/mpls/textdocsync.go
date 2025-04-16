@@ -126,7 +126,7 @@ func TextDocumentDidClose(_ *glsp.Context, _ *protocol.DidCloseTextDocumentParam
 }
 
 func loadDocument(uri string) (string, error) {
-	f := parser.GetNormalizedPath(uri)
+	f := parser.NormalizePath(uri)
 
 	c, err := os.ReadFile(f)
 	if err != nil {
