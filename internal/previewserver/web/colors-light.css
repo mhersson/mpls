@@ -12,4 +12,6 @@
   --link-color: #0366d6;
   --link-visited-color: #6f42c1;
   --link-hover-color: #0056b3;
+  --modal-background-color: rgba(249, 249, 249, 0.95);
+  --modal-close-color: #24292e;
 }

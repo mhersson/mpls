@@ -41,21 +41,21 @@ img {
   max-width: 100%;
 }
 
-#imageModal {
+#contentModal {
   display: none;
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: var(--modal-background-color);
   z-index: 1000;
   justify-content: center;
   align-items: center;
 }
 
 #closeModal {
-  color: white;
+  color: var(--modal-close-color);
   position: absolute;
   top: 20px;
   right: 30px;
@@ -63,9 +63,20 @@ img {
   cursor: pointer;
 }
 
-#modalImage {
+#imageContent {
   max-width: 95%;
   max-height: 95%;
+}
+
+#mermaidContent {
+  width: 95vw;
+  height: 95vh;
+}
+
+.mermaid-modal-svg {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
 }
 
 pre {

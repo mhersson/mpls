@@ -21,32 +21,62 @@ document.addEventListener("DOMContentLoaded", () => {
     // console.log(renderedHtml);
   }
 
-  function initializeImageModal() {
+  function initializeModal() {
+    // Image modal setup
     const images = document.querySelectorAll("img");
-
-    const modal = document.getElementById("imageModal");
-    const modalImage = document.getElementById("modalImage");
-    const closeModal = document.getElementById("closeModal");
-
     images.forEach((img) => {
       img.addEventListener("click", function () {
-        modalImage.src = img.src;
-        modal.style.display = "flex";
+        showModal("image", img);
       });
     });
+
+    // Mermaid modal setup (with timeout for rendering)
+    setTimeout(() => {
+      const mermaidDivs = document.querySelectorAll(".language-mermaid");
+      mermaidDivs.forEach((div) => {
+        const svg = div.querySelector("svg");
+        if (svg) {
+          div.addEventListener("click", function () {
+            showModal("mermaid", svg);
+          });
+        }
+      });
+    }, 1500);
+
+    const modal = document.getElementById("contentModal");
+    const closeModal = document.getElementById("closeModal");
+
+    function showModal(type, content) {
+      const mermaidContent = document.getElementById("mermaidContent");
+      const imageContent = document.getElementById("imageContent");
+
+      if (type === "image") {
+        mermaidContent.style.display = "none";
+        imageContent.src = content.src;
+        imageContent.style.display = "flex";
+      } else if (type === "mermaid") {
+        imageContent.style.display = "none";
+        mermaidContent.innerHTML = "";
+        const svgClone = content.cloneNode(true);
+        svgClone.classList.add("mermaid-modal-svg");
+        mermaidContent.appendChild(svgClone);
+        mermaidContent.style.display = "flex";
+      }
+
+      modal.style.display = "flex";
+    }
 
     closeModal.addEventListener("click", function () {
       modal.style.display = "none";
     });
 
-    // Close the modal when clicking outside the image
+    // Close modal when clicking outside of the content
     modal.addEventListener("click", function (event) {
       if (event.target === modal) {
         modal.style.display = "none";
       }
     });
   }
-
   const renderMermaid = async () => {
     const mermaidElements = document.querySelectorAll(".language-mermaid");
     if (mermaidElements.length > 0) {
@@ -106,9 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
     updateContent(renderedHtml);
     saveContentToLocalStorage(renderedHtml);
 
-    initializeImageModal();
-
     renderMermaid();
+    initializeModal();
 
     if (section) {
       const targetElement = document.querySelector(`#${section}`);
