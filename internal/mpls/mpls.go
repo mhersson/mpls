@@ -13,6 +13,7 @@ import (
 
 func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFocusParams) error {
 	var err error
+
 	plantumls = []plantuml.Plantuml{}
 
 	if currentURI == params.URI {
@@ -34,6 +35,7 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 	currentURI = params.URI
 
 	html, meta := parser.HTML(content, currentURI)
+
 	html, err = insertPlantumlDiagram(html, true)
 	if err != nil {
 		_ = protocol316.Trace(ctx, protocol316.MessageTypeWarning, log("MplsEditorDidChangeFocus - plantuml: "+err.Error()))

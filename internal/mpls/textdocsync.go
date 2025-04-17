@@ -26,6 +26,7 @@ var (
 
 func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	var err error
+
 	currentURI = params.TextDocument.URI
 	filename = filepath.Base(currentURI)
 	plantumls = []plantuml.Plantuml{}
@@ -46,6 +47,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 	}
 
 	html, meta := parser.HTML(content, currentURI)
+
 	html, err = insertPlantumlDiagram(html, true)
 	if err != nil {
 		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
@@ -58,6 +60,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 
 func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
 	var err error
+
 	switchedDocument := false
 
 	for _, change := range params.ContentChanges {
@@ -82,6 +85,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 
 			currentSection := findSection(content, startIndex)
 			html, meta := parser.HTML(content, currentURI)
+
 			html, err = insertPlantumlDiagram(html, switchedDocument)
 			if err != nil {
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
@@ -90,6 +94,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 			previewServer.Update(filename, html, currentSection, meta)
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
 			html, meta := parser.HTML(c.Text, currentURI)
+
 			html, err = insertPlantumlDiagram(html, false)
 			if err != nil {
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
@@ -111,6 +116,7 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 	}
 
 	html, meta := parser.HTML(content, currentURI)
+
 	html, err = insertPlantumlDiagram(html, true)
 	if err != nil {
 		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
@@ -153,6 +159,7 @@ func findSection(document string, index int) string {
 		if strings.HasPrefix(line, "#") && start <= index {
 			section = line
 		}
+
 		if end >= len(document) || start > index {
 			break
 		}
@@ -182,8 +189,11 @@ func formatSection(section string) string {
 
 func insertPlantumlDiagram(data string, generate bool) (string, error) {
 	const startDelimiter = `<pre><code class="language-plantuml">`
+
 	var builder strings.Builder
+
 	var err error
+
 	numDiagrams := 0
 	start := 0
 
@@ -229,6 +239,7 @@ func insertPlantumlDiagram(data string, generate bool) (string, error) {
 			} else {
 				plantumls[numDiagrams-1] = p
 			}
+
 			builder.WriteString(p.Diagram)
 		} else if len(plantumls) >= numDiagrams {
 			// Use existing until we save and generate a new one
@@ -243,6 +254,7 @@ func insertPlantumlDiagram(data string, generate bool) (string, error) {
 
 func extractPlantUMLSection(text string) (int, int) {
 	const startDelimiter = `<pre><code class="language-plantuml">`
+
 	const endDelimiter = "</code></pre>"
 
 	startIndex := strings.Index(text, startDelimiter)

@@ -1,9 +1,9 @@
+version: "2"
 linters:
-  enable-all: false
+  default: none
   enable:
   # Enabled by default -- Few false positives
   - errcheck
-  - gosimple
   - govet
   - ineffassign
   - staticcheck
@@ -12,28 +12,32 @@ linters:
   # The following are additionally enabled
   - containedctx
   - gocritic
-  - godot # comments should end in dot
-  - goimports
-  - gosec #
+  - godot
+  - gosec
   - misspell
   - nakedret
   - nlreturn # new line before return
   - noctx # check requests for context
-  - paralleltest # ensure tests are parallel when possible
-  # revive: A drop in replacement for golint, as used by e.g. etcd,
-  # grafana and others https://github.com/mgechev/revive#who-uses-revive
+  - paralleltest
   - revive
-  - stylecheck
   - testifylint # use proper testify methods
   - unconvert # Remove unnecessary type conversions
   - unparam
   - whitespace
-  disable-all: true
-linters-settings:
-  nakedret:
-    # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
-    max-func-lines: 5
+  - wsl
+  settings:
+    nakedret:
+      max-func-lines: 5
+  exclusions:
+    generated: lax
+    presets:
+    - common-false-positives
+    - std-error-handling
+    - comments
 issues:
   max-issues-per-linter: 50
   max-same-issues: 8
   fix: true
+formatters:
+  enable:
+  - goimports

@@ -37,6 +37,7 @@ func getVersionInfo() string {
 				if setting.Key == "vcs.revision" {
 					CommitSHA = setting.Value[:8]
 				}
+
 				if setting.Key == "vcs.time" {
 					BuildTime = setting.Value
 				}

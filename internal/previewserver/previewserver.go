@@ -132,14 +132,16 @@ func (s *Server) Start() {
 }
 
 // Update updates the current HTML content.
-func (s *Server) Update(filename, newContent, section string, meta map[string]interface{}) {
+func (s *Server) Update(filename, newContent, section string, meta map[string]any) {
 	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
+
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s error connecting to server: %v\n", logTime(), err)
 
 		return
 	}
+
 	defer conn.Close()
 
 	type Event struct {
@@ -153,6 +155,7 @@ func (s *Server) Update(filename, newContent, section string, meta map[string]in
 	m := convertMetaToHTMLTable(meta)
 
 	e := Event{HTML: newContent, Section: section, Title: t, Meta: m}
+
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
@@ -230,6 +233,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 func handleMessages() {
 	for {
 		msg := <-broadcast
+
 		clientsMutex.Lock()
 		for client := range clients {
 			err := client.WriteMessage(websocket.TextMessage, msg)
@@ -276,7 +280,7 @@ func Openbrowser(url, browser string) error {
 	return nil
 }
 
-func convertMetaToHTMLTable(meta map[string]interface{}) string {
+func convertMetaToHTMLTable(meta map[string]any) string {
 	if len(meta) == 0 {
 		return ""
 	}
@@ -290,9 +294,11 @@ func convertMetaToHTMLTable(meta map[string]interface{}) string {
 
 	html := "<table>"
 	html += "<tr><th colspan='2'>Meta</th></tr>"
+
 	for _, k := range keys {
 		html += fmt.Sprintf("<tr><td>%s</td><td>%v</td></tr>", k, meta[k])
 	}
+
 	html += "</table>"
 
 	return html

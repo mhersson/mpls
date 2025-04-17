@@ -53,6 +53,7 @@ func call(payload string) ([]byte, error) {
 	u := url.URL{Host: Server, Scheme: scheme, Path: path}
 
 	timeout := 10 * time.Second
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -77,6 +78,7 @@ func getDiagram(encodedUML string) (string, error) {
 	svg, err := call(encodedUML)
 
 	var buf bytes.Buffer
+
 	buf.Write([]byte(`<img src="data:image/png;base64,`))
 	enc := base64.NewEncoder(base64.StdEncoding, &buf)
 	_, _ = enc.Write(svg)
