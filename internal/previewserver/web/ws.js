@@ -50,12 +50,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const mermaidContent = document.getElementById("mermaidContent");
       const imageContent = document.getElementById("imageContent");
 
+      mermaidContent.style.display = "none";
+      imageContent.style.display = "none";
+
       if (type === "image") {
-        mermaidContent.style.display = "none";
         imageContent.src = content.src;
         imageContent.style.display = "flex";
       } else if (type === "mermaid") {
-        imageContent.style.display = "none";
         mermaidContent.innerHTML = "";
         const svgClone = content.cloneNode(true);
         svgClone.classList.add("mermaid-modal-svg");
