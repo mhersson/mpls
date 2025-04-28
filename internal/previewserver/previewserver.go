@@ -22,7 +22,6 @@ import (
 
 var (
 	Browser              string
-	DarkMode             bool
 	FixedPort            int
 	OpenBrowserOnStartup bool
 
@@ -77,16 +76,6 @@ func New() *Server {
 	if FixedPort > 0 {
 		port = FixedPort
 	}
-
-	theme := "colors-light.css"
-	mermaidTheme := "default"
-
-	if DarkMode {
-		theme = "colors-dark.css"
-		mermaidTheme = "dark"
-	}
-
-	indexHTML = fmt.Sprintf(indexHTML, theme, mermaidTheme)
 
 	srv := &http.Server{
 		Addr:        fmt.Sprintf(":%d", port),
