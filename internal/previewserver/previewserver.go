@@ -132,7 +132,7 @@ func (s *Server) Start() {
 }
 
 // Update updates the current HTML content.
-func (s *Server) Update(filename, newContent, section string, meta map[string]any) {
+func (s *Server) Update(filename, newContent string, meta map[string]any) {
 	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -145,16 +145,15 @@ func (s *Server) Update(filename, newContent, section string, meta map[string]an
 	defer conn.Close()
 
 	type Event struct {
-		HTML    string
-		Section string
-		Title   string
-		Meta    string
+		HTML  string
+		Title string
+		Meta  string
 	}
 
 	t := strings.TrimSuffix(filename, ".md")
 	m := convertMetaToHTMLTable(meta)
 
-	e := Event{HTML: newContent, Section: section, Title: t, Meta: m}
+	e := Event{HTML: newContent, Title: t, Meta: m}
 
 	eventJSON, err := json.Marshal(e)
 	if err != nil {

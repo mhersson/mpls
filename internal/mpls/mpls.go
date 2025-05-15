@@ -41,7 +41,7 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 		_ = protocol316.Trace(ctx, protocol316.MessageTypeWarning, log("MplsEditorDidChangeFocus - plantuml: "+err.Error()))
 	}
 
-	previewServer.Update(filename, html, "", meta)
+	previewServer.Update(filename, html, meta)
 
 	return nil
 }

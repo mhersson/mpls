@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -10,11 +11,18 @@ import (
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
 	meta "github.com/yuin/goldmark-meta"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 	"go.abhg.dev/goldmark/wikilink"
 )
+
+const ScrollAnchor = "mpls-scroll-anchor"
+
+var oldDocContent map[string]string
 
 var (
 	CodeHighlightingStyle string
@@ -39,6 +47,72 @@ func NormalizePath(uri string) string {
 	}
 
 	return f
+}
+
+// ScrollIDTransformer adds the mpls-scroll-anchor ID to changed nodes.
+type ScrollIDTransformer struct{}
+
+// Transform checks for changed nodes and adds the ID.
+func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+	currentDocContent := make(map[string]string)
+
+	var walk func(n ast.Node, path string)
+	walk = func(n ast.Node, path string) {
+		var content string
+		switch n.(type) {
+		case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote, *ast.Text:
+			content = string(n.Text(reader.Source()))
+		default:
+			content = n.Kind().String()
+		}
+
+		nodeKey := path + ":" + n.Kind().String()
+		currentDocContent[nodeKey] = content
+
+		if n.HasChildren() {
+			childIdx := 0
+			child := n.FirstChild()
+
+			for child != nil {
+				childPath := fmt.Sprintf("%s.%d", path, childIdx)
+				walk(child, childPath)
+				child = child.NextSibling()
+				childIdx++
+			}
+		}
+	}
+
+	walk(doc, "")
+
+	if oldDocContent != nil {
+		var markChanged func(n ast.Node, path string)
+		markChanged = func(n ast.Node, path string) {
+			nodeKey := path + ":" + n.Kind().String()
+
+			oldContent, existedBefore := oldDocContent[nodeKey]
+			newContent := currentDocContent[nodeKey]
+
+			if !existedBefore || oldContent != newContent {
+				n.SetAttribute([]byte("id"), []byte(ScrollAnchor))
+			}
+
+			if n.HasChildren() {
+				childIdx := 0
+				child := n.FirstChild()
+
+				for child != nil {
+					childPath := fmt.Sprintf("%s.%d", path, childIdx)
+					markChanged(child, childPath)
+					child = child.NextSibling()
+					childIdx++
+				}
+			}
+		}
+
+		markChanged(doc, "")
+	}
+
+	oldDocContent = currentDocContent
 }
 
 func HTML(document, uri string) (string, map[string]any) {
@@ -66,7 +140,9 @@ func HTML(document, uri string) (string, map[string]any) {
 			img64.WithPathResolver(img64.ParentLocalPathResolver(dir)),
 			html.WithUnsafe()),
 		goldmark.WithParserOptions(
-			parser.WithAutoHeadingID(),
+			parser.WithASTTransformers(
+				util.Prioritized(&ScrollIDTransformer{}, 100),
+			),
 		),
 	)
 
