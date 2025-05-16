@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -23,11 +23,16 @@
             <label id="pin-checkbox-label">
               <input type="checkbox" id="pin" /> Pin Preview
             </label>
+            <label id="disable-scrolling-checkbox-label">
+              <input type="checkbox" id="disable-scrolling" />
+              Disable Scroll To Edit
+            </label>
           </div>
         </div>
       </details>
     </div>
-    <div id="content"></div>
+    <div class="preview-content" id="content"></div>
+    <div class="preview-padding"></div>
     <div id="contentModal">
       <span id="closeModal">&times;</span>
       <img id="imageContent" />

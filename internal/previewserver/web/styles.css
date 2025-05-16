@@ -3,7 +3,6 @@ html {
   line-height: 1.5;
   color: var(--text-color);
   background-color: var(--background-color);
-  padding-bottom: 50px;
 }
 
 h1::after,
@@ -25,6 +24,15 @@ body {
 #header {
   display: flex;
   align-items: flex-start;
+}
+
+.preview-content {
+  min-height: 100%;
+}
+
+.preview-padding {
+  /* Create extra space at the bottom so document can scroll up */
+  height: 20vh;
 }
 
 #checkbox-container {

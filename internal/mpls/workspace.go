@@ -38,7 +38,7 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 			_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("WorkspaceExcueCommand - Open preview: "+err.Error()))
 		}
 
-		previewServer.Update(filename, html, "", meta)
+		previewServer.Update(filename, html, meta)
 	default:
 		return nil, errors.New("unknow  command")
 	}

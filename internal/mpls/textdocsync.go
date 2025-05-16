@@ -4,10 +4,8 @@ import (
 	"html"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/mhersson/glsp"
 	protocol "github.com/mhersson/glsp/protocol_3_16"
@@ -53,7 +51,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
 	}
 
-	previewServer.Update(filename, html, "", meta)
+	previewServer.Update(filename, html, meta)
 
 	return nil
 }
@@ -83,7 +81,6 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 			startIndex, endIndex := c.Range.IndexesIn(content)
 			content = content[:startIndex] + c.Text + content[endIndex:]
 
-			currentSection := findSection(content, startIndex)
 			html, meta := parser.HTML(content, currentURI)
 
 			html, err = insertPlantumlDiagram(html, switchedDocument)
@@ -91,7 +88,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
 			}
 
-			previewServer.Update(filename, html, currentSection, meta)
+			previewServer.Update(filename, html, meta)
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
 			html, meta := parser.HTML(c.Text, currentURI)
 
@@ -100,7 +97,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
 			}
 
-			previewServer.Update(filename, html, "", meta)
+			previewServer.Update(filename, html, meta)
 		}
 	}
 
@@ -122,7 +119,7 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
 	}
 
-	previewServer.Update(filename, html, "", meta)
+	previewServer.Update(filename, html, meta)
 
 	return nil
 }
@@ -140,51 +137,6 @@ func loadDocument(uri string) (string, error) {
 	}
 
 	return string(c), nil
-}
-
-// Find the closest section heading.
-func findSection(document string, index int) string {
-	section := ""
-	start := 0
-
-	for {
-		end := strings.Index(document[start:], "\n")
-		if end == -1 {
-			end = len(document)
-		} else {
-			end += start
-		}
-
-		line := document[start:end]
-		if strings.HasPrefix(line, "#") && start <= index {
-			section = line
-		}
-
-		if end >= len(document) || start > index {
-			break
-		}
-
-		start = end + 1
-	}
-
-	return formatSection(section)
-}
-
-func formatSection(section string) string {
-	section = strings.ToLower(section)
-
-	re := regexp.MustCompile(`[^a-z0-9&]+`)
-	section = re.ReplaceAllString(section, "-")
-
-	section = strings.ReplaceAll(section, "&", "")
-
-	section = strings.Trim(section, "-")
-
-	if len(section) > 0 && !unicode.IsLetter(rune(section[0])) {
-		section = "id-" + section
-	}
-
-	return section
 }
 
 func insertPlantumlDiagram(data string, generate bool) (string, error) {

@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
   const renderMermaid = async () => {
     const mermaidElements = document.querySelectorAll(".language-mermaid");
     if (mermaidElements.length > 0) {
@@ -114,7 +115,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const response = JSON.parse(event.data);
     const renderedHtml = response.HTML;
-    const section = response.Section;
     const title = "mpls - " + response.Title;
     const meta = response.Meta;
 
@@ -140,23 +140,28 @@ document.addEventListener("DOMContentLoaded", () => {
     renderMermaid();
     initializeModal();
 
-    if (section) {
-      const targetElement = document.querySelector(`#${section}`);
-
-      if (targetElement) {
-        targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
-
-        const offset = 50;
-        const elementRect = targetElement.getBoundingClientRect();
-        const elementTop = elementRect.top + window.scrollY;
-
-        window.scrollTo({
-          top: elementTop - offset,
-          behavior: "smooth",
-        });
-      } else {
-        console.warn("Target element not found for cursor position:", section);
-      }
-    }
+    scrollToEdit();
   };
+
+  function scrollToEdit() {
+    const scrollAnchor = "mpls-scroll-anchor";
+
+    const disableScrolling = document.getElementById("disable-scrolling");
+    if (disableScrolling.checked) {
+      return;
+    }
+
+    const targetElement = document.getElementById(scrollAnchor);
+
+    if (targetElement) {
+      const offset = 150;
+      const elementRect = targetElement.getBoundingClientRect();
+      const elementTop = elementRect.top + window.scrollY;
+
+      window.scrollTo({
+        top: elementTop - offset,
+        behavior: "smooth",
+      });
+    }
+  }
 });
