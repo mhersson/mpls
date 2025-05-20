@@ -214,9 +214,7 @@ The following options can be used when starting `mpls`:
    all available styles in Chroma are available here. Default style is
    `catppuccin-mocha`.
 3. Has a small impact on performance, but makes sure that commands like `reflow`
-   in Helix, does not impact the accuracy of the preview. Additionally, it
-   disables `mpls'` efforts to scroll to the closest section header when
-   editing.
+   in Helix, does not impact the accuracy of the preview.
 
 ## Configuration examples
 
