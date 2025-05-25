@@ -22,9 +22,8 @@ import (
 
 const ScrollAnchor = "mpls-scroll-anchor"
 
-var oldDocContent map[string]string
-
 var (
+	oldDocContent         map[string]string
 	CodeHighlightingStyle string
 	EnableWikiLinks       bool
 
@@ -49,25 +48,24 @@ func NormalizePath(uri string) string {
 	return f
 }
 
-// ScrollIDTransformer adds the mpls-scroll-anchor ID to changed nodes.
 type ScrollIDTransformer struct{}
 
-// Transform checks for changed nodes and adds the ID.
 func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
 	currentDocContent := make(map[string]string)
 
+	changedNodes := make(map[ast.Node]bool)
+
 	var walk func(n ast.Node, path string)
 	walk = func(n ast.Node, path string) {
-		var content string
-		switch n.(type) {
-		case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote, *ast.Text:
-			content = string(n.Text(reader.Source()))
-		default:
-			content = n.Kind().String()
-		}
-
 		nodeKey := path + ":" + n.Kind().String()
-		currentDocContent[nodeKey] = content
+		newContent := string(n.Text(reader.Source()))
+		currentDocContent[nodeKey] = newContent
+
+		if oldDocContent != nil {
+			if oldContent, existed := oldDocContent[nodeKey]; !existed || oldContent != newContent {
+				changedNodes[n] = true
+			}
+		}
 
 		if n.HasChildren() {
 			childIdx := 0
@@ -84,32 +82,32 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 
 	walk(doc, "")
 
-	if oldDocContent != nil {
-		var markChanged func(n ast.Node, path string)
-		markChanged = func(n ast.Node, path string) {
-			nodeKey := path + ":" + n.Kind().String()
+	if oldDocContent != nil && len(changedNodes) > 0 {
+		var previousIDAbleNode ast.Node
 
-			oldContent, existedBefore := oldDocContent[nodeKey]
-			newContent := currentDocContent[nodeKey]
-
-			if !existedBefore || oldContent != newContent {
-				n.SetAttribute([]byte("id"), []byte(ScrollAnchor))
+		_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+			if !entering {
+				return ast.WalkContinue, nil
 			}
 
-			if n.HasChildren() {
-				childIdx := 0
-				child := n.FirstChild()
+			switch n.(type) {
+			case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote:
+				previousIDAbleNode = n
+			}
 
-				for child != nil {
-					childPath := fmt.Sprintf("%s.%d", path, childIdx)
-					markChanged(child, childPath)
-					child = child.NextSibling()
-					childIdx++
+			if changedNodes[n] {
+				switch n.(type) {
+				case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote, *ast.Text:
+					n.SetAttribute([]byte("id"), []byte(ScrollAnchor))
+				default:
+					if previousIDAbleNode != nil {
+						previousIDAbleNode.SetAttribute([]byte("id"), []byte(ScrollAnchor))
+					}
 				}
 			}
-		}
 
-		markChanged(doc, "")
+			return ast.WalkContinue, nil
+		})
 	}
 
 	oldDocContent = currentDocContent
