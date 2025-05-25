@@ -2,9 +2,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const ws = new WebSocket("ws://localhost:%d/ws");
 
   const DEBOUNCE_DELAY = 1000;
+  const MERMAID_RENDER_DELAY = 100;
+  const SCROLL_OFFSET = 150;
+  const SCROLL_RETRY_DELAY = 50;
+  const MAX_SCROLL_RETRIES = 10;
+
   let debounceTimeout;
   let isReloading = false;
+  let lastScrollTarget = null;
 
+  // Utility functions
   function debounce(func, delay) {
     return function (...args) {
       clearTimeout(debounceTimeout);
@@ -12,52 +19,66 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function $$(selector) {
+    return document.querySelectorAll(selector);
+  }
+
+  // Content management
   const saveContentToLocalStorage = debounce((renderedHtml) => {
-    localStorage.setItem("savedContent", renderedHtml);
+    try {
+      localStorage.setItem("savedContent", renderedHtml);
+    } catch (error) {
+      console.warn("Failed to save to localStorage:", error);
+    }
   }, DEBOUNCE_DELAY);
 
   function updateContent(renderedHtml) {
-    document.getElementById("content").innerHTML = renderedHtml;
-    // console.log(renderedHtml);
+    const contentElement = $("content");
+    if (contentElement) {
+      contentElement.innerHTML = renderedHtml;
+    }
   }
 
-  function initializeModal() {
-    // Image modal setup
-    const images = document.querySelectorAll("img");
-    images.forEach((img) => {
-      img.addEventListener("click", function () {
-        showModal("image", img);
-      });
-    });
+  function loadSavedContent() {
+    try {
+      const savedContent = localStorage.getItem("savedContent");
+      if (savedContent) {
+        updateContent(savedContent);
+        // Render mermaid and initialize modals after loading saved content
+        renderMermaidAndScroll();
+      }
+    } catch (error) {
+      console.warn("Failed to load from localStorage:", error);
+    }
+  }
 
-    // Mermaid modal setup (with timeout for rendering)
-    setTimeout(() => {
-      const mermaidDivs = document.querySelectorAll(".language-mermaid");
-      mermaidDivs.forEach((div) => {
-        const svg = div.querySelector("svg");
-        if (svg) {
-          div.addEventListener("click", function () {
-            showModal("mermaid", svg);
-          });
-        }
-      });
-    }, 1500);
+  // Modal functionality
+  function createModalHandler() {
+    const modal = $("contentModal");
+    const closeModal = $("closeModal");
+    const mermaidContent = $("mermaidContent");
+    const imageContent = $("imageContent");
 
-    const modal = document.getElementById("contentModal");
-    const closeModal = document.getElementById("closeModal");
+    if (!modal || !closeModal || !mermaidContent || !imageContent) {
+      console.warn("Modal elements not found");
+      return { showModal: () => {}, initializeModal: () => {} };
+    }
 
     function showModal(type, content) {
-      const mermaidContent = document.getElementById("mermaidContent");
-      const imageContent = document.getElementById("imageContent");
-
+      // Reset modal content
       mermaidContent.style.display = "none";
       imageContent.style.display = "none";
+      mermaidContent.innerHTML = "";
+      imageContent.src = "";
 
-      if (type === "image") {
+      if (type === "image" && content.src) {
         imageContent.src = content.src;
         imageContent.style.display = "flex";
       } else if (type === "mermaid") {
-        mermaidContent.innerHTML = "";
         const svgClone = content.cloneNode(true);
         svgClone.classList.add("mermaid-modal-svg");
         mermaidContent.appendChild(svgClone);
@@ -67,101 +88,252 @@ document.addEventListener("DOMContentLoaded", () => {
       modal.style.display = "flex";
     }
 
-    closeModal.addEventListener("click", function () {
+    function closeModalHandler() {
       modal.style.display = "none";
-    });
+      // Clean up modal content
+      mermaidContent.innerHTML = "";
+      imageContent.src = "";
+    }
 
-    // Close modal when clicking outside of the content
-    modal.addEventListener("click", function (event) {
+    // Event listeners
+    closeModal.addEventListener("click", closeModalHandler);
+    modal.addEventListener("click", (event) => {
       if (event.target === modal) {
-        modal.style.display = "none";
+        closeModalHandler();
       }
     });
+
+    // Keyboard navigation
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && modal.style.display === "flex") {
+        closeModalHandler();
+      }
+    });
+
+    function initializeModal() {
+      // Setup image modals
+      $$("img").forEach((img) => {
+        // Skip if already has handler
+        if (img._modalHandlerAttached) return;
+
+        img._modalHandler = () => showModal("image", img);
+        img.addEventListener("click", img._modalHandler);
+        img._modalHandlerAttached = true;
+        img.style.cursor = "pointer";
+      });
+
+      // Setup Mermaid modals
+      $$(".language-mermaid").forEach((div) => {
+        const svg = div.querySelector("svg");
+        if (svg && !div._modalHandlerAttached) {
+          div._modalHandler = () => showModal("mermaid", svg);
+          div.addEventListener("click", div._modalHandler);
+          div._modalHandlerAttached = true;
+          div.style.cursor = "pointer";
+        }
+      });
+    }
+
+    return { showModal, initializeModal };
   }
 
-  const renderMermaid = async () => {
-    const mermaidElements = document.querySelectorAll(".language-mermaid");
-    if (mermaidElements.length > 0) {
+  // Mermaid rendering with measurement
+  async function renderMermaid() {
+    const mermaidElements = $$(".language-mermaid");
+    if (mermaidElements.length === 0 || !window.mermaid) {
+      return Promise.resolve();
+    }
+
+    // Store pre-render scroll position
+    const scrollBefore = window.scrollY;
+
+    try {
+      // Mark elements as rendering
+      mermaidElements.forEach((el) => {
+        el.setAttribute("data-rendering", "true");
+      });
+
       await window.mermaid.run({
         querySelector: ".language-mermaid",
       });
+
+      // Remove rendering markers
+      mermaidElements.forEach((el) => {
+        el.removeAttribute("data-rendering");
+      });
+
+      // Return scroll adjustment needed
+      return window.scrollY - scrollBefore;
+    } catch (error) {
+      console.error("Mermaid rendering failed:", error);
+      mermaidElements.forEach((el) => {
+        el.removeAttribute("data-rendering");
+      });
+      return 0;
     }
-  };
+  }
 
-  window.addEventListener("load", function () {
-    const savedContent = localStorage.getItem("savedContent");
-    if (savedContent) {
-      updateContent(savedContent);
-    }
-  });
-
-  window.addEventListener("beforeunload", function () {
-    isReloading = true;
-  });
-
-  ws.onclose = function (event) {
-    if (!isReloading) {
-      window.close();
-    }
-    console.log("WebSocket connection closed:", event);
-  };
-
-  ws.onopen = function (event) {
-    console.log("WebSocket connection established");
-  };
-
-  ws.onmessage = function (event) {
-    console.log("Got WebSocket message");
-
-    const response = JSON.parse(event.data);
-    const renderedHtml = response.HTML;
-    const title = "mpls - " + response.Title;
-    const meta = response.Meta;
-
-    const pin = document.getElementById("pin");
-    if (pin.checked && title !== document.title) {
-      console.log("Preview is pinned - ignoring event");
+  // Improved scroll functionality
+  function scrollToEdit(retryCount = 0) {
+    const disableScrolling = $("disable-scrolling");
+    if (disableScrolling?.checked) {
       return;
     }
 
-    if (title !== document.title) {
-      document.getElementById("header-summary").innerText = response.Title;
-      document.title = title;
-    }
-
-    const headerMeta = document.getElementById("header-meta");
-    if (headerMeta !== meta) {
-      document.getElementById("header-meta").innerHTML = meta;
-    }
-
-    updateContent(renderedHtml);
-    saveContentToLocalStorage(renderedHtml);
-
-    renderMermaid();
-    initializeModal();
-
-    scrollToEdit();
-  };
-
-  function scrollToEdit() {
-    const scrollAnchor = "mpls-scroll-anchor";
-
-    const disableScrolling = document.getElementById("disable-scrolling");
-    if (disableScrolling.checked) {
+    const targetElement = $("mpls-scroll-anchor");
+    if (!targetElement) {
+      lastScrollTarget = null;
       return;
     }
 
-    const targetElement = document.getElementById(scrollAnchor);
+    // Check if any mermaid diagrams are still rendering
+    const renderingElements = $$('[data-rendering="true"]');
+    if (renderingElements.length > 0 && retryCount < MAX_SCROLL_RETRIES) {
+      // Retry after a short delay
+      setTimeout(() => scrollToEdit(retryCount + 1), SCROLL_RETRY_DELAY);
+      return;
+    }
 
-    if (targetElement) {
-      const offset = 150;
-      const elementRect = targetElement.getBoundingClientRect();
-      const elementTop = elementRect.top + window.scrollY;
+    // Store target for future reference
+    lastScrollTarget = targetElement;
 
+    const elementRect = targetElement.getBoundingClientRect();
+    const elementTop = elementRect.top + window.scrollY;
+    const targetScrollPosition = elementTop - SCROLL_OFFSET;
+
+    // Only scroll if we're not already at the target position
+    if (Math.abs(window.scrollY - targetScrollPosition) > 5) {
       window.scrollTo({
-        top: elementTop - offset,
+        top: targetScrollPosition,
         behavior: "smooth",
       });
     }
   }
+
+  // Combined render and scroll function
+  async function renderMermaidAndScroll() {
+    // First render mermaid
+    await renderMermaid();
+
+    // Then initialize modals
+    modalHandler.initializeModal();
+
+    // Finally scroll to edit position
+    // Use setTimeout to ensure DOM has settled
+    setTimeout(() => {
+      scrollToEdit();
+    }, MERMAID_RENDER_DELAY);
+  }
+
+  // WebSocket event handlers
+  async function handleWebSocketMessage(event) {
+    try {
+      const response = JSON.parse(event.data);
+      const { HTML: renderedHtml, Title: responseTitle, Meta: meta } = response;
+
+      const title = `mpls - ${responseTitle}`;
+      const pin = $("pin");
+
+      // Check if preview is pinned
+      if (pin?.checked && title !== document.title) {
+        console.log("Preview is pinned - ignoring event");
+        return;
+      }
+
+      // Update title if changed
+      if (title !== document.title) {
+        const headerSummary = $("header-summary");
+        if (headerSummary) {
+          headerSummary.innerText = responseTitle;
+        }
+        document.title = title;
+      }
+
+      // Update meta if changed
+      const headerMeta = $("header-meta");
+      if (headerMeta && headerMeta.innerHTML !== meta) {
+        headerMeta.innerHTML = meta;
+      }
+
+      // Update content
+      updateContent(renderedHtml);
+      saveContentToLocalStorage(renderedHtml);
+
+      // Render and scroll
+      await renderMermaidAndScroll();
+    } catch (error) {
+      console.error("Failed to process WebSocket message:", error);
+    }
+  }
+
+  function handleWebSocketClose(event) {
+    console.log("WebSocket connection closed:", event);
+    if (!isReloading) {
+      window.close();
+    }
+  }
+
+  function handleWebSocketOpen() {
+    console.log("WebSocket connection established");
+  }
+
+  function handleWebSocketError(event) {
+    console.error("WebSocket error:", event);
+  }
+
+  // Intersection Observer for lazy loading (optional enhancement)
+  function setupLazyLoading() {
+    const observerOptions = {
+      root: null,
+      rootMargin: "50px",
+      threshold: 0.01,
+    };
+
+    const imageObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          if (img.dataset.src && !img.src) {
+            img.src = img.dataset.src;
+            imageObserver.unobserve(img);
+          }
+        }
+      });
+    }, observerOptions);
+
+    // Observe all images with data-src
+    $$("img[data-src]").forEach((img) => {
+      imageObserver.observe(img);
+    });
+  }
+
+  // Initialize modal handler
+  const modalHandler = createModalHandler();
+
+  // WebSocket setup
+  ws.addEventListener("open", handleWebSocketOpen);
+  ws.addEventListener("message", handleWebSocketMessage);
+  ws.addEventListener("close", handleWebSocketClose);
+  ws.addEventListener("error", handleWebSocketError);
+
+  // Window event listeners
+  window.addEventListener("load", () => {
+    loadSavedContent();
+    setupLazyLoading();
+  });
+
+  window.addEventListener("beforeunload", () => {
+    isReloading = true;
+  });
+
+  // Handle window resize to maintain scroll position
+  let resizeTimeout;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (lastScrollTarget && !$("disable-scrolling")?.checked) {
+        scrollToEdit();
+      }
+    }, 250);
+  });
 });
