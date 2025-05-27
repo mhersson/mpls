@@ -91,7 +91,7 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 			}
 
 			switch n.(type) {
-			case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote:
+			case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote, *ast.Text:
 				previousIDAbleNode = n
 			}
 
