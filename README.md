@@ -218,10 +218,12 @@ The following options can be used when starting `mpls`:
 
 ## Configuration examples
 
-**Helix**
+**✨Helix**
 
 <details>
-<summary>languages.toml</summary>
+<summary>click to expand</summary>
+
+In your `languages.toml`
 
 ```toml
 # Configured to run alongside marksman.
@@ -239,87 +241,119 @@ args = ["--dark-mode", "--enable-emoji"]
 
 </details>
 
-**Neovim (LazyVim)**
+**✨Neovim 0.11+ using vim.lsp.enable**
 
 <details>
-<summary>lua/plugins/mpls.lua</summary>
+
+<summary>click to expand</summary>
+
+In my `init.lua` I have `vim.lsp.enable({"mpls"})` in addition to the following config.
 
 ```lua
+--- filename: ~/.config/nvim/lsp/mpls.lua
 return {
-  {
-    "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        mpls = {},
-      },
-      setup = {
-        mpls = function(_, opts)
-          local lspconfig = require("lspconfig")
-          local configs = require("lspconfig.configs")
-
-          if not configs.mpls then
-            configs.mpls = {
-              default_config = {
-                cmd = { "mpls", "--dark-mode", "--enable-emoji" },
-                filetypes = { "markdown" },
-                single_file_support = true,
-                root_dir = function(startpath)
-                  local git_root = vim.fs.find(".git", { path = startpath or
-                    vim.fn.getcwd(), upward = true })
-                  return git_root[1] and vim.fs.dirname(git_root[1]) or startpath
-                end,
-                settings = {},
-              },
-              docs = {
-                description = [[https://github.com/mhersson/mpls
-
-Markdown Preview Language Server (MPLS) is a language server that provides
-live preview of markdown files in your browser while you edit them in your favorite editor.
-                ]],
-              },
-            }
-          end
-          lspconfig.mpls.setup(opts)
-          vim.api.nvim_create_user_command('MplsOpenPreview', function()
-            local clients = vim.lsp.get_active_clients()
-            local mpls_client = nil
-
-            for _, client in ipairs(clients) do
-              if client.name == "mpls" then
-                mpls_client = client
-                break
-              end
-            end
-
-            -- Only execute the command if the MPLS client is found
-            if mpls_client then
-              local params = {
-                command = 'open-preview',
-                arguments = {}
-              }
-              mpls_client.request('workspace/executeCommand', params,
-                function(err, result)
-                if err then
-                  print("Error executing command: " .. err.message)
-                end
-              end)
-            else
-              print("mpls is not attached to the current buffer.")
-            end
-          end, {})
-        end,
-      },
+    cmd = {
+        "mpls",
+        "--dark-mode",
+        "--enable-emoji",
+        "--enable-footnotes",
     },
-  },
+    root_markers = { ".marksman.toml", ".git" },
+    filetypes = { "markdown", "makdown.mdx" },
+    on_attach = function(client, bufnr)
+        vim.api.nvim_buf_create_user_command(bufnr, "MplsOpenPreview", function()
+            local params = {
+                command = "open-preview",
+            }
+            client.request("workspace/executeCommand", params, function(err, _)
+                if err then
+                    vim.notify("Error executing command: " .. err.message, vim.log.levels.ERROR)
+                else
+                    vim.notify("Preview opened", vim.log.levels.INFO)
+                end
+            end)
+        end, {
+            desc = "Preview markdown with mpls",
+        })
+    end,
+}
+```
+
+The following autocmds config is optional, it makes `mpls` update the preview
+whenever you change focus to a buffer containing a markdown file.
+
+```lua
+--- filename: ~/.config/nvim/lua/config/autocmds.lua
+
+--- MPLS Focus Handler
+local function create_debounced_mpls_sender(delay)
+    delay = delay or 300
+    local timer = nil
+
+    return function()
+        if timer then
+            timer:close()
+            timer = nil
+        end
+
+        ---@diagnostic disable-next-line: undefined-field
+        timer = vim.uv.new_timer()
+        if not timer then
+            vim.notify("Failed to create timer for MPLS focus", vim.log.levels.ERROR)
+            return
+        end
+
+        timer:start(
+            delay,
+            0,
+            vim.schedule_wrap(function()
+                local bufnr = vim.api.nvim_get_current_buf()
+
+                local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
+                if filetype ~= "markdown" then
+                    return
+                end
+
+                local clients = vim.lsp.get_clients({ name = "mpls" })
+
+                if #clients == 0 then
+                    return
+                end
+
+                local client = clients[1]
+                local params = { uri = vim.uri_from_bufnr(bufnr) }
+
+                ---@diagnostic disable-next-line: param-type-mismatch
+                client:notify("mpls/editorDidChangeFocus", params)
+
+                if timer then
+                    timer:close()
+                    timer = nil
+                end
+            end)
+        )
+    end
+end
+
+local send_mpls_focus = create_debounced_mpls_sender(300)
+
+local group = vim.api.nvim_create_augroup("MplsFocus", { clear = true })
+vim.api.nvim_create_autocmd("BufEnter", {
+    pattern = "*.md",
+    callback = send_mpls_focus,
+    group = group,
+    desc = "Notify MPLS of buffer focus changes",
 }
 ```
 
 </details>
 
-**Doom-Emacs with lsp-mode**
+**✨Doom-Emacs with lsp-mode**
 
 <details>
-<summary>config.el</summary>
+<summary>click to expand</summary>
+
+In your `config.el`
 
 ```elisp
 (after! markdown-mode
@@ -397,7 +431,13 @@ live preview of markdown files in your browser while you edit them in your favor
 
   ;; Initialize the tracking
   (setup-markdown-focus-tracking))
-
 ```
 
 </details>
+
+---
+
+Thank you for reading my entire README! 🎉 If you made it this far, I hope you
+decide to try out `mpls` and that it works wonders for your Markdown editing 🙂
+If you later have some feedback or want to contribute? Issues and PRs are always
+appreciated!
