@@ -52,62 +52,95 @@ type ScrollIDTransformer struct{}
 
 func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
 	currentDocContent := make(map[string]string)
-
 	changedNodes := make(map[ast.Node]bool)
 
-	var walk func(n ast.Node, path string)
+	var walk func(ast.Node, string)
 	walk = func(n ast.Node, path string) {
-		nodeKey := path + ":" + n.Kind().String()
-		newContent := string(n.Text(reader.Source()))
-		currentDocContent[nodeKey] = newContent
+		key := path + ":" + n.Kind().String()
+		content := string(n.Text(reader.Source()))
+		currentDocContent[key] = content
 
 		if oldDocContent != nil {
-			if oldContent, existed := oldDocContent[nodeKey]; !existed || oldContent != newContent {
+			if old, exists := oldDocContent[key]; !exists || old != content {
 				changedNodes[n] = true
+
+				for p := n.Parent(); p != nil; p = p.Parent() {
+					if _, ok := p.(*ast.ListItem); ok {
+						changedNodes[p] = true
+
+						break
+					}
+
+					if _, ok := p.(*ast.Paragraph); ok {
+						changedNodes[p] = true
+
+						break
+					}
+
+					if _, ok := p.(*ast.Heading); ok {
+						changedNodes[p] = true
+
+						break
+					}
+
+					if _, ok := p.(*ast.Blockquote); ok {
+						changedNodes[p] = true
+
+						break
+					}
+				}
 			}
 		}
 
-		if n.HasChildren() {
-			childIdx := 0
-			child := n.FirstChild()
-
-			for child != nil {
-				childPath := fmt.Sprintf("%s.%d", path, childIdx)
-				walk(child, childPath)
-				child = child.NextSibling()
-				childIdx++
-			}
+		for i, child := 0, n.FirstChild(); child != nil; i, child = i+1, child.NextSibling() {
+			walk(child, fmt.Sprintf("%s.%d", path, i))
 		}
 	}
 
 	walk(doc, "")
 
-	if oldDocContent != nil && len(changedNodes) > 0 {
-		var previousIDAbleNode ast.Node
+	if len(changedNodes) == 0 {
+		oldDocContent = currentDocContent
 
-		_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-			if !entering {
-				return ast.WalkContinue, nil
-			}
+		return
+	}
 
-			switch n.(type) {
-			case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote, *ast.Text:
-				previousIDAbleNode = n
-			}
+	var target ast.Node
+
+	var maxDepth int
+
+	var lastStructural ast.Node
+
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+
+		switch n.(type) {
+		case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote:
+			lastStructural = n
 
 			if changedNodes[n] {
-				switch n.(type) {
-				case *ast.Heading, *ast.Paragraph, *ast.ListItem, *ast.Blockquote, *ast.Text:
-					n.SetAttribute([]byte("id"), []byte(ScrollAnchor))
-				default:
-					if previousIDAbleNode != nil {
-						previousIDAbleNode.SetAttribute([]byte("id"), []byte(ScrollAnchor))
-					}
+				depth := 0
+				for p := n.Parent(); p != nil; p = p.Parent() {
+					depth++
+				}
+
+				if depth > maxDepth {
+					target, maxDepth = n, depth
 				}
 			}
+		default:
+			if changedNodes[n] && target == nil {
+				target = lastStructural
+			}
+		}
 
-			return ast.WalkContinue, nil
-		})
+		return ast.WalkContinue, nil
+	})
+
+	if target != nil {
+		target.SetAttribute([]byte("id"), []byte(ScrollAnchor))
 	}
 
 	oldDocContent = currentDocContent
