@@ -4,6 +4,7 @@ import (
 	"html"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,14 +16,19 @@ import (
 )
 
 var (
-	content       string
-	currentURI    string
-	filename      string
-	previewServer *previewserver.Server
-	plantumls     []plantuml.Plantuml
+	content             string
+	currentURI          string
+	filename            string
+	previewServer       *previewserver.Server
+	plantumls           []plantuml.Plantuml
+	validFileExtensions = []string{".md", ".markdown", ".mkd", ".mkdn", ".mdwn"}
 )
 
 func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
+	if !slices.Contains(validFileExtensions, filepath.Ext(params.TextDocument.URI)) {
+		return nil
+	}
+
 	var err error
 
 	currentURI = params.TextDocument.URI
@@ -57,6 +63,10 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 }
 
 func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
+	if !slices.Contains(validFileExtensions, filepath.Ext(params.TextDocument.URI)) {
+		return nil
+	}
+
 	var err error
 
 	switchedDocument := false
@@ -105,6 +115,10 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 }
 
 func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocumentParams) error {
+	if !slices.Contains(validFileExtensions, filepath.Ext(params.TextDocument.URI)) {
+		return nil
+	}
+
 	var err error
 
 	content, err = loadDocument(params.TextDocument.URI)
