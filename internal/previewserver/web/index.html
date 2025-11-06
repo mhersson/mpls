@@ -1,48 +1,42 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/%s" />
-    <link rel="stylesheet" href="/styles.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/katex@0.16.18/dist/katex.min.css"
-      integrity="sha384-veTAhWILPOotXm+kbR5uY7dRamYLJf58I7P+hJhjeuc7hsMAkJHTsPahAl0hBST0"
-      crossorigin="anonymous"
-    />
-    <title></title>
-  </head>
-  <body>
-    <div>
-      <details>
-        <summary id="header-summary"></summary>
-        <div id="header">
-          <div id="header-meta"></div>
-          <div id="checkbox-container">
-            <label id="pin-checkbox-label">
-              <input type="checkbox" id="pin" /> Pin Preview
-            </label>
-            <label id="disable-scrolling-checkbox-label">
-              <input type="checkbox" id="disable-scrolling" />
-              Disable Scroll To Edit
-            </label>
-          </div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="/%s" />
+        <link rel="stylesheet" href="/styles.css" />
+        <link rel="stylesheet" href="/katex.min.css" />
+        <title></title>
+    </head>
+    <body>
+        <div>
+            <details>
+                <summary id="header-summary"></summary>
+                <div id="header">
+                    <div id="header-meta"></div>
+                    <div id="checkbox-container">
+                        <label id="pin-checkbox-label">
+                            <input type="checkbox" id="pin" /> Pin Preview
+                        </label>
+                        <label id="disable-scrolling-checkbox-label">
+                            <input type="checkbox" id="disable-scrolling" />
+                            Disable Scroll To Edit
+                        </label>
+                    </div>
+                </div>
+            </details>
         </div>
-      </details>
-    </div>
-    <div class="preview-content" id="content"></div>
-    <div class="preview-padding"></div>
-    <div id="contentModal">
-      <span id="closeModal">&times;</span>
-      <img id="imageContent" />
-      <div id="mermaidContent"></div>
-    </div>
-    <script type="module">
-      import mermaid from "https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.7.0/mermaid.esm.mjs";
-      mermaid.initialize({ startonload: false, theme: "%s" });
-      window.mermaid = mermaid;
-    </script>
-    <script src="/ws.js"></script>
-  </body>
+        <div class="preview-content" id="content"></div>
+        <div class="preview-padding"></div>
+        <div id="contentModal">
+            <span id="closeModal">&times;</span>
+            <img id="imageContent" />
+            <div id="mermaidContent"></div>
+        </div>
+        <script src="mermaid.min.js"></script>
+        <script>
+            mermaid.initialize({ startonload: false, theme: "%s" });
+        </script>
+        <script src="/ws.js"></script>
+    </body>
 </html>

@@ -20,6 +20,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Current version of katex used: 0.16.25 (https://cdn.jsdelivr.net/npm/katex@0.16.25/dist/katex.min.css)
+// Current version of mermaid used: 11.12.1 (https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.min.js)
+
 var (
 	Browser              string
 	DarkMode             bool
@@ -28,12 +31,16 @@ var (
 
 	//go:embed web/index.html
 	indexHTML string
+	//go:embed web/katex.min.css
+	katexMinCSS string
 	//go:embed web/styles.css
 	stylesCSS string
 	//go:embed web/colors-dark.css
 	colorsDarkCSS string
 	//go:embed web/colors-light.css
 	colorsLightCSS string
+	//go:embed web/mermaid.min.js
+	mermaid string
 	//go:embed web/ws.js
 	websocketJS string
 
@@ -103,8 +110,10 @@ func New() *Server {
 func (s *Server) Start() {
 	http.HandleFunc("/", handleResponse("text/html", s.InitialContent))
 	http.HandleFunc("/styles.css", handleResponse("text/css", stylesCSS))
+	http.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
 	http.HandleFunc("/colors-light.css", handleResponse("text/css", colorsLightCSS))
 	http.HandleFunc("/colors-dark.css", handleResponse("text/css", colorsDarkCSS))
+	http.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
 	http.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
 
 	http.HandleFunc("/ws", handleWebSocket)
