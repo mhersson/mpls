@@ -151,7 +151,6 @@ follow these steps:
 3. **Install the executable**:
 
    You have two options to install the executable:
-
    - **Option 1: Copy the executable to your PATH**:
 
      After building, you can manually copy the executable to a directory that is
@@ -247,7 +246,8 @@ args = ["--dark-mode", "--enable-emoji"]
 
 <summary>click to expand</summary>
 
-In my `init.lua` I have `vim.lsp.enable({"mpls"})` in addition to the following config.
+In my `init.lua` I have `vim.lsp.enable({"mpls"})` in addition to the following
+config.
 
 ```lua
 --- filename: ~/.config/nvim/lsp/mpls.lua
