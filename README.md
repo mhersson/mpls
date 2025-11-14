@@ -94,14 +94,32 @@ concerned about security, you can host a PlantUML server locally and specify the
 
 ## Install
 
+### Homebrew (macOS and Linux)
+
+The easiest way to install and keep `mpls` updated:
+
+```bash
+brew tap mhersson/formulas
+brew install mpls
+```
+
+To update to the latest version:
+
+```bash
+brew upgrade mpls
+```
+
+### Go Install
+
 If you already have go installed you can just run:
 
 ```bash
 go install github.com/mhersson/mpls@latest
 ```
 
-If not, the easiest way to install `mpls` is to download one of the prebuilt
-release binaries. You can find the latest releases on the
+### Prebuilt Binaries
+
+Download one of the prebuilt release binaries from the
 [Releases page](https://github.com/mhersson/mpls/releases).
 
 1. Download the appropriate tar.gz file for your operating system.
