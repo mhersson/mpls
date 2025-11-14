@@ -238,6 +238,17 @@ args = ["--dark-mode", "--enable-emoji"]
 # args = ["--port", "8080", "--browser", "google-chrome"]
 ```
 
+You can manually open the preview by running the command
+`:lsp-workspace-command open-preview` in Helix, and also set up a keybinding for
+it in your `config.toml`:
+
+For example, to bind it to `Ctrl-m`:
+
+```toml
+[keys.normal]
+"C-m" = ":lsp-workspace-command open-preview"
+```
+
 </details>
 
 **✨Neovim 0.11+ using vim.lsp.enable**
