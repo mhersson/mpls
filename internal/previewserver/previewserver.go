@@ -2,9 +2,10 @@ package previewserver
 
 import (
 	"context"
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -43,6 +44,8 @@ var (
 	mermaid string
 	//go:embed web/ws.js
 	websocketJS string
+	//go:embed web/fonts
+	katexFontsFS embed.FS
 
 	broadcast    = make(chan []byte)
 	clients      = make(map[*websocket.Conn]bool)
@@ -115,6 +118,10 @@ func (s *Server) Start() {
 	http.HandleFunc("/colors-dark.css", handleResponse("text/css", colorsDarkCSS))
 	http.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
 	http.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
+
+	// Serve embedded KaTeX fonts
+	fontsSubFS, _ := fs.Sub(katexFontsFS, "web/fonts")
+	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.FS(fontsSubFS))))
 
 	http.HandleFunc("/ws", handleWebSocket)
 
