@@ -307,14 +307,16 @@ func convertMetaToHTMLTable(meta map[string]any) string {
 
 	sort.Strings(keys)
 
-	html := "<table>"
-	html += "<tr><th colspan='2'>Meta</th></tr>"
+	var html strings.Builder
+
+	html.WriteString("<table>")
+	html.WriteString("<tr><th colspan='2'>Meta</th></tr>")
 
 	for _, k := range keys {
-		html += fmt.Sprintf("<tr><td>%s</td><td>%v</td></tr>", k, meta[k])
+		fmt.Fprintf(&html, "<tr><td>%s</td><td>%v</td></tr>", k, meta[k])
 	}
 
-	html += "</table>"
+	html.WriteString("</table>")
 
-	return html
+	return html.String()
 }
