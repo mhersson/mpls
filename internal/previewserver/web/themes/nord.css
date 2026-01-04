@@ -1,0 +1,19 @@
+/* Nord theme */
+/* Based on the Nord theme by Arctic Ice Studio */
+/* URL: https://www.nordtheme.com */
+:root {
+  --text-color: #D8DEE9;
+  --background-color: #2e3440;
+  --border-color: #4C566A;
+  --code-background-color: #3B4252;
+  --table-header-background: #3B4252;
+  --even-row-background: #3B4252;
+  --blockquote-color: #616e88;
+  --blockquote-background: #3B4252;
+  --blockquote-border-color: #A3BE8C;
+  --link-color: #88C0D0;
+  --link-visited-color: #B48EAD;
+  --link-hover-color: #8FBCBB;
+  --modal-background-color: rgba(46, 52, 64, 0.95);
+  --modal-close-color: #D8DEE9;
+}

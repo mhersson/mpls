@@ -1,0 +1,19 @@
+/* Ayu Light theme */
+/* Based on the Ayu theme by André Sá */
+/* URL: https://github.com/dempfi/ayu */
+:root {
+  --text-color: #5c6166;
+  --background-color: #fafafa;
+  --border-color: #d8d8d7;
+  --code-background-color: #e7eaed;
+  --table-header-background: #e7eaed;
+  --even-row-background: #fcfcfc;
+  --blockquote-color: #828c9a;
+  --blockquote-background: #e7eaed;
+  --blockquote-border-color: #86b300;
+  --link-color: #399ee6;
+  --link-visited-color: #a37acc;
+  --link-hover-color: #55b4d4;
+  --modal-background-color: rgba(250, 250, 250, 0.95);
+  --modal-close-color: #5c6166;
+}

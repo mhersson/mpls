@@ -13,10 +13,11 @@ import (
 )
 
 var (
-	noAuto    bool
-	Version   = "dev"
-	CommitSHA = "unknown"
-	BuildTime = "unknown"
+	noAuto     bool
+	listThemes bool
+	Version    = "dev"
+	CommitSHA  = "unknown"
+	BuildTime  = "unknown"
 )
 
 var command = &cobra.Command{
@@ -24,6 +25,22 @@ var command = &cobra.Command{
 	Short:   "Markdown Preview Language Server",
 	Version: getVersionInfo(),
 	Run: func(cmd *cobra.Command, _ []string) {
+		if listThemes {
+			previewserver.ListThemes()
+
+			return
+		}
+
+		// Auto-set code-style based on theme only if:
+		// 1. User explicitly set --theme
+		// 2. User didn't explicitly set --code-style
+		// 3. There's a matching chroma style for the theme
+		if cmd.Flags().Changed("theme") && !cmd.Flags().Changed("code-style") {
+			if chromaStyle := previewserver.GetChromaStyleForTheme(previewserver.Theme); chromaStyle != "" {
+				parser.CodeHighlightingStyle = chromaStyle
+			}
+		}
+
 		cmd.Printf("mpls %s - press Ctrl+D to quit.\n", cmd.Version)
 		previewserver.OpenBrowserOnStartup = !noAuto
 		mpls.Run()
@@ -67,7 +84,8 @@ func Execute() {
 func init() {
 	command.Flags().StringVar(&previewserver.Browser, "browser", "", "Specify the web browser to use for the preview")
 	command.Flags().StringVar(&parser.CodeHighlightingStyle, "code-style", "catppuccin-mocha", "Higlighting style for code blocks")
-	command.Flags().BoolVar(&previewserver.DarkMode, "dark-mode", false, "Enable dark mode")
+	command.Flags().BoolVar(&listThemes, "list-themes", false, "List all available themes and exit")
+	command.Flags().StringVar(&previewserver.Theme, "theme", "light", "Set the preview theme (light, dark, or any custom theme)")
 	command.Flags().BoolVar(&parser.EnableEmoji, "enable-emoji", false, "Enable emoji support")
 	command.Flags().BoolVar(&parser.EnableFootnotes, "enable-footnotes", false, "Enable footnotes")
 	command.Flags().BoolVar(&parser.EnableWikiLinks, "enable-wikilinks", false, "Enable [[wiki]] style links")

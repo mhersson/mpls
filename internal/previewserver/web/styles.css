@@ -91,6 +91,8 @@ pre {
   padding: 10px;
   max-width: 100%;
   overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
 }
 
 code {

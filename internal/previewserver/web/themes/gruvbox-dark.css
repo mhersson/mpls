@@ -1,0 +1,19 @@
+/* Gruvbox Dark theme */
+/* Based on the Gruvbox theme by morhetz */
+/* URL: https://github.com/morhetz/gruvbox */
+:root {
+  --text-color: #ebdbb2;
+  --background-color: #282828;
+  --border-color: #504945;
+  --code-background-color: #3c3836;
+  --table-header-background: #3c3836;
+  --even-row-background: #32302f;
+  --blockquote-color: #928374;
+  --blockquote-background: #3c3836;
+  --blockquote-border-color: #b8bb26;
+  --link-color: #83a598;
+  --link-visited-color: #d3869b;
+  --link-hover-color: #8ec07c;
+  --modal-background-color: rgba(40, 40, 40, 0.95);
+  --modal-close-color: #ebdbb2;
+}

@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -26,7 +27,7 @@ import (
 
 var (
 	Browser              string
-	DarkMode             bool
+	Theme                string
 	FixedPort            int
 	OpenBrowserOnStartup bool
 
@@ -36,16 +37,14 @@ var (
 	katexMinCSS string
 	//go:embed web/styles.css
 	stylesCSS string
-	//go:embed web/colors-dark.css
-	colorsDarkCSS string
-	//go:embed web/colors-light.css
-	colorsLightCSS string
 	//go:embed web/mermaid.min.js
 	mermaid string
 	//go:embed web/ws.js
 	websocketJS string
 	//go:embed web/fonts
 	katexFontsFS embed.FS
+	//go:embed web/themes
+	themesFS embed.FS
 
 	broadcast    = make(chan []byte)
 	clients      = make(map[*websocket.Conn]bool)
@@ -61,6 +60,42 @@ type Server struct {
 
 func logTime() string {
 	return time.Now().Local().Format("2006-01-02 15:04:05")
+}
+
+func ListThemes() {
+	fmt.Println("Available themes:")
+	fmt.Println()
+
+	aliases := map[string]string{
+		"light": "default-light.css",
+		"dark":  "default-dark.css",
+	}
+
+	entries, err := fs.ReadDir(themesFS, "web/themes")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading themes: %v\n", err)
+
+		return
+	}
+
+	fmt.Println("Aliases:")
+
+	for alias, filename := range aliases {
+		fmt.Printf("  %-20s -> %s\n", alias, filename)
+	}
+
+	fmt.Println()
+
+	fmt.Println("All themes:")
+
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".css") {
+			themeName := strings.TrimSuffix(entry.Name(), ".css")
+			_, mermaidTheme := getThemeConfig(themeName)
+
+			fmt.Printf("  %-20s (mermaid: %s)\n", themeName, mermaidTheme)
+		}
+	}
 }
 
 func WaitForClients(timeout time.Duration) error {
@@ -82,18 +117,99 @@ func WaitForClients(timeout time.Duration) error {
 	}
 }
 
+// GetChromaStyleForTheme returns a recommended chroma syntax highlighting style for a given theme.
+// Since theme names match chroma conventions, most themes return their name directly.
+func GetChromaStyleForTheme(themeName string) string {
+	// Map common theme aliases to actual filenames first
+	themeMap := map[string]string{
+		"light": "default-light",
+		"dark":  "default-dark",
+	}
+
+	actualThemeName := themeName
+	if mapped, exists := themeMap[themeName]; exists {
+		actualThemeName = mapped
+	}
+
+	// Special cases where mpls theme name differs from chroma style name
+	// or where there's no exact chroma match
+	specialCases := map[string]string{
+		"ayu-dark":        "github-dark",      // No exact ayu in chroma, github-dark is clean
+		"ayu-light":       "github",           // No exact ayu in chroma, github is clean
+		"default-dark":    "catppuccin-mocha", // Default dark → catppuccin-mocha
+		"default-light":   "catppuccin-latte", // Default light → catppuccin-latte
+		"everforest-dark": "evergarden",       // No everforest in chroma → evergarden
+		"gruvbox-dark":    "gruvbox",          // Chroma uses "gruvbox" for dark variant
+		"tokyonight":      "tokyonight-night", // Base variant maps to -night
+	}
+
+	if chromaStyle, exists := specialCases[actualThemeName]; exists {
+		return chromaStyle
+	}
+
+	// For all other themes, the theme name matches the chroma style name directly
+	// (catppuccin-mocha, catppuccin-frappe, nord, dracula, rose-pine, etc.)
+	return actualThemeName
+}
+
+func getThemeConfig(themeName string) (cssFile, mermaidTheme string) {
+	// Map common theme aliases to actual filenames
+	themeMap := map[string]string{
+		"light": "default-light",
+		"dark":  "default-dark",
+	}
+
+	// Use mapped name if it exists, otherwise use the theme name as-is
+	actualThemeName := themeName
+	if mapped, exists := themeMap[themeName]; exists {
+		actualThemeName = mapped
+	}
+
+	cssFile = fmt.Sprintf("themes/%s.css", actualThemeName)
+
+	// Dark themes that don't have "dark" in their name
+	// All other themes with "dark" in the name are automatically detected
+	darkThemesWithoutDarkInName := []string{
+		"catppuccin-mocha", "catppuccin-frappe", "catppuccin-macchiato",
+		"dracula", "nord", "rose-pine", "tokyonight", "tokyonight-storm",
+		"tokyonight-moon",
+	}
+
+	// Determine mermaid theme
+	mermaidTheme = "default"
+
+	// Automatically detect themes with "dark" in their name
+	if strings.Contains(actualThemeName, "dark") {
+		mermaidTheme = "dark"
+	}
+
+	// Check for dark themes without "dark" in their name
+	if slices.Contains(darkThemesWithoutDarkInName, actualThemeName) {
+		mermaidTheme = "dark"
+	}
+
+	return cssFile, mermaidTheme
+}
+
 func New() *Server {
 	port := rand.Intn(65535-10000) + 10000 //nolint:gosec
 	if FixedPort > 0 {
 		port = FixedPort
 	}
 
-	theme := "colors-light.css"
-	mermaidTheme := "default"
+	// Default to light theme if not specified
+	if Theme == "" {
+		Theme = "light"
+	}
 
-	if DarkMode {
-		theme = "colors-dark.css"
-		mermaidTheme = "dark"
+	theme, mermaidTheme := getThemeConfig(Theme)
+
+	// Validate theme file exists
+	themeFilePath := fmt.Sprintf("web/%s", theme)
+	if _, err := themesFS.ReadFile(themeFilePath); err != nil {
+		fmt.Fprintf(os.Stderr, "%s Warning: theme '%s' not found, falling back to default-light\n", logTime(), Theme)
+
+		theme, mermaidTheme = getThemeConfig("light")
 	}
 
 	indexHTML = fmt.Sprintf(indexHTML, theme, mermaidTheme)
@@ -114,14 +230,16 @@ func (s *Server) Start() {
 	http.HandleFunc("/", handleResponse("text/html", s.InitialContent))
 	http.HandleFunc("/styles.css", handleResponse("text/css", stylesCSS))
 	http.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
-	http.HandleFunc("/colors-light.css", handleResponse("text/css", colorsLightCSS))
-	http.HandleFunc("/colors-dark.css", handleResponse("text/css", colorsDarkCSS))
 	http.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
 	http.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
 
 	// Serve embedded KaTeX fonts
 	fontsSubFS, _ := fs.Sub(katexFontsFS, "web/fonts")
 	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.FS(fontsSubFS))))
+
+	// Serve embedded themes
+	themesSubFS, _ := fs.Sub(themesFS, "web/themes")
+	http.Handle("/themes/", http.StripPrefix("/themes/", http.FileServer(http.FS(themesSubFS))))
 
 	http.HandleFunc("/ws", handleWebSocket)
 

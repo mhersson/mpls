@@ -1,0 +1,19 @@
+/* Tokyo Night Day theme */
+/* Based on the Tokyo Night theme by Paul Graydon */
+/* URL: https://github.com/enkia/tokyo-night-vscode-theme */
+:root {
+  --text-color: #3760bf;
+  --background-color: #e1e2e7;
+  --border-color: #a8aecb;
+  --code-background-color: #e9e9ec;
+  --table-header-background: #e9e9ec;
+  --even-row-background: #e9e9ed;
+  --blockquote-color: #848cb5;
+  --blockquote-background: #e9e9ec;
+  --blockquote-border-color: #587539;
+  --link-color: #2e7de9;
+  --link-visited-color: #9854f1;
+  --link-hover-color: #007197;
+  --modal-background-color: rgba(225, 226, 231, 0.95);
+  --modal-close-color: #3760bf;
+}

@@ -1,0 +1,19 @@
+/* Rosé Pine theme */
+/* Based on the Rosé Pine theme */
+/* URL: https://rosepinetheme.com */
+:root {
+  --text-color: #e0def4;
+  --background-color: #191724;
+  --border-color: #26233a;
+  --code-background-color: #1f1d2e;
+  --table-header-background: #1f1d2e;
+  --even-row-background: #21202e;
+  --blockquote-color: #908caa;
+  --blockquote-background: #1f1d2e;
+  --blockquote-border-color: #9ccfd8;
+  --link-color: #c4a7e7;
+  --link-visited-color: #eb6f92;
+  --link-hover-color: #9ccfd8;
+  --modal-background-color: rgba(25, 23, 36, 0.95);
+  --modal-close-color: #e0def4;
+}

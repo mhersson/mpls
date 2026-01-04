@@ -1,0 +1,19 @@
+/* Everforest Dark theme CSS */
+/* Based on the Everforest theme by sainnhe */
+/* URL: https://github.com/sainnhe/everforest */
+:root {
+  --text-color: #d3c6aa;
+  --background-color: #2d353b;
+  --border-color: #475258;
+  --code-background-color: #343f44;
+  --table-header-background: #3d484d;
+  --even-row-background: #343f44;
+  --blockquote-color: #859289;
+  --blockquote-background: #3d484d;
+  --blockquote-border-color: #a7c080;
+  --link-color: #7fbbb3;
+  --link-visited-color: #d699b6;
+  --link-hover-color: #83c092;
+  --modal-background-color: rgba(45, 53, 59, 0.95);
+  --modal-close-color: #d3c6aa;
+}

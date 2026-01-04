@@ -1,0 +1,19 @@
+/* Solarized Light theme */
+/* Based on the Solarized theme by Ethan Schoonover */
+/* URL: https://ethanschoonover.com/solarized */
+:root {
+  --text-color: #657b83;
+  --background-color: #fdf6e3;
+  --border-color: #eee8d5;
+  --code-background-color: #eee8d5;
+  --table-header-background: #eee8d5;
+  --even-row-background: #f5eedb;
+  --blockquote-color: #586e75;
+  --blockquote-background: #eee8d5;
+  --blockquote-border-color: #2aa198;
+  --link-color: #268bd2;
+  --link-visited-color: #6c71c4;
+  --link-hover-color: #2aa198;
+  --modal-background-color: rgba(253, 246, 227, 0.95);
+  --modal-close-color: #657b83;
+}

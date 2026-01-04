@@ -1,0 +1,19 @@
+/* Catppuccin Latte theme */
+/* Based on the Catppuccin theme */
+/* URL: https://github.com/catppuccin/catppuccin */
+:root {
+  --text-color: #4c4f69;
+  --background-color: #eff1f5;
+  --border-color: #bcc0cc;
+  --code-background-color: #e6e9ef;
+  --table-header-background: #e6e9ef;
+  --even-row-background: #dce0e8;
+  --blockquote-color: #7c7f93;
+  --blockquote-background: #e6e9ef;
+  --blockquote-border-color: #40a02b;
+  --link-color: #1e66f5;
+  --link-visited-color: #8839ef;
+  --link-hover-color: #179299;
+  --modal-background-color: rgba(239, 241, 245, 0.95);
+  --modal-close-color: #4c4f69;
+}

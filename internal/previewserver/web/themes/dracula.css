@@ -1,0 +1,19 @@
+/* Dracula theme */
+/* Based on the Dracula theme by Zeno Rocha */
+/* URL: https://draculatheme.com */
+:root {
+  --text-color: #f8f8f2;
+  --background-color: #282A36;
+  --border-color: #44475a;
+  --code-background-color: #191A21;
+  --table-header-background: #191A21;
+  --even-row-background: #222430;
+  --blockquote-color: #6272A4;
+  --blockquote-background: #191A21;
+  --blockquote-border-color: #50fa7b;
+  --link-color: #8be9fd;
+  --link-visited-color: #BD93F9;
+  --link-hover-color: #ff79c6;
+  --modal-background-color: rgba(40, 42, 54, 0.95);
+  --modal-close-color: #f8f8f2;
+}

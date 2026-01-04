@@ -1,0 +1,19 @@
+/* Ayu Dark theme */
+/* Based on the Ayu theme by André Sá */
+/* URL: https://github.com/dempfi/ayu */
+:root {
+  --text-color: #bfbdb6;
+  --background-color: #0f1419;
+  --border-color: #2d3640;
+  --code-background-color: #131721;
+  --table-header-background: #131721;
+  --even-row-background: #0f1419;
+  --blockquote-color: #5c6773;
+  --blockquote-background: #131721;
+  --blockquote-border-color: #aad94c;
+  --link-color: #59c2ff;
+  --link-visited-color: #d2a6ff;
+  --link-hover-color: #73b8ff;
+  --modal-background-color: rgba(15, 20, 25, 0.95);
+  --modal-close-color: #bfbdb6;
+}

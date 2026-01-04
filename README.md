@@ -209,11 +209,12 @@ The following options can be used when starting `mpls`:
 | ------------------------ | --------------------------------------------------------------------- |
 | `--browser`              | Specify web browser to use for the preview. **(1)**                   |
 | `--code-style`           | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
-| `--dark-mode`            | Enable dark mode                                                      |
+| `--theme`                | Set the preview theme (light, dark, or any custom theme). **(3)**     |
+| `--list-themes`          | List all available themes and exit                                    |
 | `--enable-emoji`         | Enable emoji support                                                  |
 | `--enable-footnotes`     | Enable footnotes                                                      |
 | `--enable-wikilinks`     | Enable rendering of [[wiki]] -style links                             |
-| `--full-sync`            | Sync the entire document for every change being made. **(3)**         |
+| `--full-sync`            | Sync the entire document for every change being made. **(4)**         |
 | `--no-auto`              | Don't open preview automatically                                      |
 | `--plantuml-disable-tls` | Disable encryption on requests to the PlantUML server                 |
 | `--plantuml-server`      | Specify the host for the PlantUML server                              |
@@ -229,8 +230,15 @@ The following options can be used when starting `mpls`:
 2. The goldmark-highlighting extension use
    [Chroma](https://github.com/alecthomas/chroma) as the syntax highlighter, so
    all available styles in Chroma are available here. Default style is
-   `catppuccin-mocha`.
-3. Has a small impact on performance, but makes sure that commands like `reflow`
+   `catppuccin-mocha`. When `--theme` is set, the code style automatically
+   matches the theme if a corresponding chroma style exists.
+3. Built-in themes include: `catppuccin-mocha`, `catppuccin-frappe`,
+   `catppuccin-macchiato`, `catppuccin-latte`, `tokyonight`, `tokyonight-storm`,
+   `tokyonight-moon`, `tokyonight-day`, `gruvbox-dark`, `gruvbox-light`,
+   `solarized-dark`, `solarized-light`, `nord`, `dracula`, `rose-pine`,
+   `ayu-dark`, `ayu-light`, `everforest-dark`, and more. Use `--list-themes` to
+   see all available themes. Default theme is `light`.
+4. Has a small impact on performance, but makes sure that commands like `reflow`
    in Helix, does not impact the accuracy of the preview.
 
 ## Configuration examples
@@ -251,9 +259,9 @@ name = "markdown"
 
 [language-server.mpls]
 command = "mpls"
-args = ["--dark-mode", "--enable-emoji"]
+args = ["--theme", "tokyonight", "--enable-emoji"]
 # An example args entry showing how to specify flags with values:
-# args = ["--port", "8080", "--browser", "google-chrome"]
+# args = ["--port", "8080", "--browser", "google-chrome", "--theme", "gruvbox-dark"]
 ```
 
 You can manually open the preview by running the command
@@ -283,7 +291,7 @@ config.
 return {
     cmd = {
         "mpls",
-        "--dark-mode",
+        "--theme", "tokyonight",
         "--enable-emoji",
         "--enable-footnotes",
     },
@@ -414,7 +422,7 @@ In your `config.el`
                                         (or (executable-find lsp-mpls-server-command)
                                             (lsp-package-path 'mpls)
                                             "mpls")
-                                        "--dark-mode"
+                                        "--theme" "nord"
                                         "--enable-emoji"
                                         )))
                     :activation-fn (lsp-activate-on "markdown")

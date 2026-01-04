@@ -1,0 +1,19 @@
+/* Tokyo Night Moon theme */
+/* Based on the Tokyo Night theme by Paul Graydon */
+/* URL: https://github.com/enkia/tokyo-night-vscode-theme */
+:root {
+  --text-color: #c8d3f5;
+  --background-color: #222436;
+  --border-color: #3b4261;
+  --code-background-color: #1e2030;
+  --table-header-background: #1e2030;
+  --even-row-background: #1b1d2b;
+  --blockquote-color: #636da6;
+  --blockquote-background: #1e2030;
+  --blockquote-border-color: #c3e88d;
+  --link-color: #82aaff;
+  --link-visited-color: #c099ff;
+  --link-hover-color: #86e1fc;
+  --modal-background-color: rgba(34, 36, 54, 0.95);
+  --modal-close-color: #c8d3f5;
+}

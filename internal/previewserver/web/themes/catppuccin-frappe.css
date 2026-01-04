@@ -1,0 +1,19 @@
+/* Catppuccin Frappé theme */
+/* Based on the Catppuccin theme */
+/* URL: https://github.com/catppuccin/catppuccin */
+:root {
+  --text-color: #c6d0f5;
+  --background-color: #303446;
+  --border-color: #51576d;
+  --code-background-color: #292c3c;
+  --table-header-background: #292c3c;
+  --even-row-background: #232634;
+  --blockquote-color: #949cbb;
+  --blockquote-background: #292c3c;
+  --blockquote-border-color: #a6d189;
+  --link-color: #8caaee;
+  --link-visited-color: #ca9ee6;
+  --link-hover-color: #81c8be;
+  --modal-background-color: rgba(48, 52, 70, 0.95);
+  --modal-close-color: #c6d0f5;
+}
