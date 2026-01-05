@@ -64,12 +64,6 @@ func logTime() string {
 
 func ListThemes() {
 	fmt.Println("Available themes:")
-	fmt.Println()
-
-	aliases := map[string]string{
-		"light": "default-light.css",
-		"dark":  "default-dark.css",
-	}
 
 	entries, err := fs.ReadDir(themesFS, "web/themes")
 	if err != nil {
@@ -77,16 +71,6 @@ func ListThemes() {
 
 		return
 	}
-
-	fmt.Println("Aliases:")
-
-	for alias, filename := range aliases {
-		fmt.Printf("  %-20s -> %s\n", alias, filename)
-	}
-
-	fmt.Println()
-
-	fmt.Println("All themes:")
 
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".css") {
@@ -120,52 +104,29 @@ func WaitForClients(timeout time.Duration) error {
 // GetChromaStyleForTheme returns a recommended chroma syntax highlighting style for a given theme.
 // Since theme names match chroma conventions, most themes return their name directly.
 func GetChromaStyleForTheme(themeName string) string {
-	// Map common theme aliases to actual filenames first
-	themeMap := map[string]string{
-		"light": "default-light",
-		"dark":  "default-dark",
-	}
-
-	actualThemeName := themeName
-	if mapped, exists := themeMap[themeName]; exists {
-		actualThemeName = mapped
-	}
-
 	// Special cases where mpls theme name differs from chroma style name
 	// or where there's no exact chroma match
 	specialCases := map[string]string{
 		"ayu-dark":        "github-dark",      // No exact ayu in chroma, github-dark is clean
 		"ayu-light":       "github",           // No exact ayu in chroma, github is clean
-		"default-dark":    "catppuccin-mocha", // Default dark → catppuccin-mocha
-		"default-light":   "catppuccin-mocha", // Default light → catppuccin-mocha
+		"dark":            "catppuccin-mocha", // Default dark → catppuccin-mocha (maintains original default)
+		"light":           "catppuccin-mocha", // Default light → catppuccin-mocha (maintains original default)
 		"everforest-dark": "evergarden",       // No everforest in chroma → evergarden
 		"gruvbox-dark":    "gruvbox",          // Chroma uses "gruvbox" for dark variant
 		"tokyonight":      "tokyonight-night", // Base variant maps to -night
 	}
 
-	if chromaStyle, exists := specialCases[actualThemeName]; exists {
+	if chromaStyle, exists := specialCases[themeName]; exists {
 		return chromaStyle
 	}
 
 	// For all other themes, the theme name matches the chroma style name directly
 	// (catppuccin-mocha, catppuccin-frappe, nord, dracula, rose-pine, etc.)
-	return actualThemeName
+	return themeName
 }
 
 func getThemeConfig(themeName string) (cssFile, mermaidTheme string) {
-	// Map common theme aliases to actual filenames
-	themeMap := map[string]string{
-		"light": "default-light",
-		"dark":  "default-dark",
-	}
-
-	// Use mapped name if it exists, otherwise use the theme name as-is
-	actualThemeName := themeName
-	if mapped, exists := themeMap[themeName]; exists {
-		actualThemeName = mapped
-	}
-
-	cssFile = fmt.Sprintf("themes/%s.css", actualThemeName)
+	cssFile = fmt.Sprintf("themes/%s.css", themeName)
 
 	// Dark themes that don't have "dark" in their name
 	// All other themes with "dark" in the name are automatically detected
@@ -179,12 +140,12 @@ func getThemeConfig(themeName string) (cssFile, mermaidTheme string) {
 	mermaidTheme = "default"
 
 	// Automatically detect themes with "dark" in their name
-	if strings.Contains(actualThemeName, "dark") {
+	if strings.Contains(themeName, "dark") {
 		mermaidTheme = "dark"
 	}
 
 	// Check for dark themes without "dark" in their name
-	if slices.Contains(darkThemesWithoutDarkInName, actualThemeName) {
+	if slices.Contains(darkThemesWithoutDarkInName, themeName) {
 		mermaidTheme = "dark"
 	}
 
@@ -207,7 +168,7 @@ func New() *Server {
 	// Validate theme file exists
 	themeFilePath := fmt.Sprintf("web/%s", theme)
 	if _, err := themesFS.ReadFile(themeFilePath); err != nil {
-		fmt.Fprintf(os.Stderr, "%s Warning: theme '%s' not found, falling back to default-light\n", logTime(), Theme)
+		fmt.Fprintf(os.Stderr, "%s Warning: theme '%s' not found, falling back to light\n", logTime(), Theme)
 
 		theme, mermaidTheme = getThemeConfig("light")
 	}
