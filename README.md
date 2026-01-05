@@ -209,8 +209,9 @@ The following options can be used when starting `mpls`:
 | ------------------------ | --------------------------------------------------------------------- |
 | `--browser`              | Specify web browser to use for the preview. **(1)**                   |
 | `--code-style`           | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
-| `--theme`                | Set the preview theme (light, dark, or any custom theme). **(3)**     |
+| `--theme`                | Set the preview theme (light, dark, or any of the provided themes). **(3)** |
 | `--list-themes`          | List all available themes and exit                                    |
+| `--dark-mode`            | **DEPRECATED:** Use `--theme dark` instead. Will be removed in a future release. |
 | `--enable-emoji`         | Enable emoji support                                                  |
 | `--enable-footnotes`     | Enable footnotes                                                      |
 | `--enable-wikilinks`     | Enable rendering of [[wiki]] -style links                             |

@@ -15,6 +15,7 @@ import (
 var (
 	noAuto     bool
 	listThemes bool
+	darkMode   bool
 	Version    = "dev"
 	CommitSHA  = "unknown"
 	BuildTime  = "unknown"
@@ -31,11 +32,16 @@ var command = &cobra.Command{
 			return
 		}
 
+		// Handle deprecated --dark-mode flag for backward compatibility
+		if darkMode && !cmd.Flags().Changed("theme") {
+			previewserver.Theme = "dark"
+		}
+
 		// Auto-set code-style based on theme only if:
-		// 1. User explicitly set --theme
+		// 1. User explicitly set --theme (or --dark-mode)
 		// 2. User didn't explicitly set --code-style
 		// 3. There's a matching chroma style for the theme
-		if cmd.Flags().Changed("theme") && !cmd.Flags().Changed("code-style") {
+		if (cmd.Flags().Changed("theme") || darkMode) && !cmd.Flags().Changed("code-style") {
 			if chromaStyle := previewserver.GetChromaStyleForTheme(previewserver.Theme); chromaStyle != "" {
 				parser.CodeHighlightingStyle = chromaStyle
 			}
@@ -84,6 +90,7 @@ func Execute() {
 func init() {
 	command.Flags().StringVar(&previewserver.Browser, "browser", "", "Specify the web browser to use for the preview")
 	command.Flags().StringVar(&parser.CodeHighlightingStyle, "code-style", "catppuccin-mocha", "Higlighting style for code blocks")
+	command.Flags().BoolVar(&darkMode, "dark-mode", false, "Enable dark mode (deprecated: use --theme dark instead)")
 	command.Flags().BoolVar(&listThemes, "list-themes", false, "List all available themes and exit")
 	command.Flags().StringVar(&previewserver.Theme, "theme", "light", "Set the preview theme (light, dark, or any custom theme)")
 	command.Flags().BoolVar(&parser.EnableEmoji, "enable-emoji", false, "Enable emoji support")
@@ -95,4 +102,7 @@ func init() {
 	command.Flags().StringVar(&plantuml.BasePath, "plantuml-path", "plantuml", "Specify the base path for the plantuml server")
 	command.Flags().StringVar(&plantuml.Server, "plantuml-server", "www.plantuml.com", "Specify the host for the plantuml server")
 	command.Flags().BoolVar(&plantuml.DisableTLS, "plantuml-disable-tls", false, "Disable encryption on requests to the plantuml server")
+
+	// Mark deprecated flags
+	command.Flags().MarkDeprecated("dark-mode", "use --theme dark instead")
 }
