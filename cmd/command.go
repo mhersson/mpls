@@ -92,7 +92,7 @@ func init() {
 	command.Flags().StringVar(&parser.CodeHighlightingStyle, "code-style", "catppuccin-mocha", "Higlighting style for code blocks")
 	command.Flags().BoolVar(&darkMode, "dark-mode", false, "Enable dark mode (deprecated: use --theme dark instead)")
 	command.Flags().BoolVar(&listThemes, "list-themes", false, "List all available themes and exit")
-	command.Flags().StringVar(&previewserver.Theme, "theme", "light", "Set the preview theme (light, dark, or any custom theme)")
+	command.Flags().StringVar(&previewserver.Theme, "theme", "light", "Set the preview theme (light, dark, or any of the provided themes)")
 	command.Flags().BoolVar(&parser.EnableEmoji, "enable-emoji", false, "Enable emoji support")
 	command.Flags().BoolVar(&parser.EnableFootnotes, "enable-footnotes", false, "Enable footnotes")
 	command.Flags().BoolVar(&parser.EnableWikiLinks, "enable-wikilinks", false, "Enable [[wiki]] style links")
