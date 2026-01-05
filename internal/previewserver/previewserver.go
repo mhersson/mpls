@@ -137,7 +137,7 @@ func GetChromaStyleForTheme(themeName string) string {
 		"ayu-dark":        "github-dark",      // No exact ayu in chroma, github-dark is clean
 		"ayu-light":       "github",           // No exact ayu in chroma, github is clean
 		"default-dark":    "catppuccin-mocha", // Default dark → catppuccin-mocha
-		"default-light":   "catppuccin-latte", // Default light → catppuccin-latte
+		"default-light":   "catppuccin-mocha", // Default light → catppuccin-mocha
 		"everforest-dark": "evergarden",       // No everforest in chroma → evergarden
 		"gruvbox-dark":    "gruvbox",          // Chroma uses "gruvbox" for dark variant
 		"tokyonight":      "tokyonight-night", // Base variant maps to -night
