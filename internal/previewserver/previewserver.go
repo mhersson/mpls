@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -411,17 +410,6 @@ func (s *Server) Update(filename, newContent string, meta map[string]any) {
 
 // CloseDocument sends a close message to clients viewing the specified document.
 func (s *Server) CloseDocument(documentURI string) {
-	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
-
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s error connecting to server: %v\n", logTime(), err)
-
-		return
-	}
-
-	defer conn.Close()
-
 	type CloseEvent struct {
 		Type        string
 		DocumentURI string
@@ -432,30 +420,27 @@ func (s *Server) CloseDocument(documentURI string) {
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling close event to JSON: %v\n", err)
-
 		return
 	}
 
-	// Send close message
-	err = conn.WriteMessage(websocket.TextMessage, eventJSON)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s error sending close message: %v\n", logTime(), err)
+	// Broadcast directly to connected clients
+	clientsMutex.Lock()
+	clientList := make([]*websocket.Conn, 0, len(clients))
+	for client := range clients {
+		clientList = append(clientList, client)
+	}
+	clientsMutex.Unlock()
+
+	// Send to all clients without holding the lock
+	for _, client := range clientList {
+		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
+			fmt.Fprintf(os.Stderr, "%s error sending close message: %v\n", logTime(), err)
+		}
 	}
 }
 
 // UpdateWithURI updates the current HTML content with document URI for client filtering.
 func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, meta map[string]any) {
-	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
-
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s error connecting to server: %v\n", logTime(), err)
-
-		return
-	}
-
-	defer conn.Close()
-
 	type Event struct {
 		HTML        string
 		Title       string
@@ -471,16 +456,22 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
-
 		return
 	}
 
-	// Send a message to the server
-	err = conn.WriteMessage(websocket.TextMessage, eventJSON)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
+	// Broadcast directly to connected clients
+	clientsMutex.Lock()
+	clientList := make([]*websocket.Conn, 0, len(clients))
+	for client := range clients {
+		clientList = append(clientList, client)
+	}
+	clientsMutex.Unlock()
 
-		return
+	// Send to all clients without holding the lock
+	for _, client := range clientList {
+		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
+			fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
+		}
 	}
 }
 
