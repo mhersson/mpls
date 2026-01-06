@@ -239,6 +239,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const title = `mpls - ${responseTitle}`;
+      const pin = $("pin");
+
+      // Check if preview is pinned
+      if (pin?.checked && title !== document.title) {
+        console.log("Preview is pinned - ignoring event");
+        return;
+      }
 
       // Update title if changed
       if (title !== document.title) {
