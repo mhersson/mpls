@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Improved scroll functionality
-  function scrollToEdit(retryCount = 0) {
+  function scrollToEdit(retryCount = 0, fileChanged = false) {
     const disableScrolling = $("disable-scrolling");
     if (disableScrolling?.checked) {
       return;
@@ -154,6 +154,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const targetElement = $("mpls-scroll-anchor");
     if (!targetElement) {
       lastScrollTarget = null;
+      // If file changed and no anchor, scroll to top
+      if (fileChanged && window.scrollY > 0) {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      }
       return;
     }
 
@@ -161,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const renderingElements = $$('[data-rendering="true"]');
     if (renderingElements.length > 0 && retryCount < MAX_SCROLL_RETRIES) {
       // Retry after a short delay
-      setTimeout(() => scrollToEdit(retryCount + 1), SCROLL_RETRY_DELAY);
+      setTimeout(() => scrollToEdit(retryCount + 1, fileChanged), SCROLL_RETRY_DELAY);
       return;
     }
 
@@ -182,7 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Combined render and scroll function
-  async function renderMermaidAndScroll() {
+  async function renderMermaidAndScroll(fileChanged = false) {
     // First render mermaid
     await renderMermaid();
 
@@ -192,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Finally scroll to edit position
     // Use setTimeout to ensure DOM has settled
     setTimeout(() => {
-      scrollToEdit();
+      scrollToEdit(0, fileChanged);
     }, MERMAID_RENDER_DELAY);
   }
 
@@ -248,7 +255,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Update title if changed
+      let titleChanged = false;
       if (title !== document.title) {
+        titleChanged = true;
         const headerSummary = $("header-summary");
         if (headerSummary) {
           headerSummary.innerText = responseTitle;
@@ -266,7 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateContent(renderedHtml);
 
       // Render and scroll
-      await renderMermaidAndScroll();
+      await renderMermaidAndScroll(titleChanged);
     } catch (error) {
       console.error("Failed to process WebSocket message:", error);
     }
