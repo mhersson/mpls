@@ -204,25 +204,37 @@ document.addEventListener("DOMContentLoaded", () => {
       // Handle config message
       if (response.Type === "config") {
         enableTabsMode = response.EnableTabs || false;
-        console.log(`Preview mode: ${enableTabsMode ? 'multi-tab' : 'single-page'}`);
+        console.log(
+          `Preview mode: ${enableTabsMode ? "multi-tab" : "single-page"}`,
+        );
         return;
       }
 
       // Handle closeDocument message
       if (response.Type === "closeDocument") {
         // Only close window in multi-tab mode
-        if (enableTabsMode && response.DocumentURI === window.location.pathname) {
+        if (
+          enableTabsMode &&
+          response.DocumentURI === window.location.pathname
+        ) {
           console.log(`Closing preview for ${response.DocumentURI}`);
           window.close();
         }
         return;
       }
 
-      const { HTML: renderedHtml, Title: responseTitle, Meta: meta, DocumentURI: documentURI } = response;
+      const {
+        HTML: renderedHtml,
+        Title: responseTitle,
+        Meta: meta,
+        DocumentURI: documentURI,
+      } = response;
 
       // If DocumentURI is provided, check if it matches current page
       if (documentURI && documentURI !== window.location.pathname) {
-        console.log(`Ignoring update for ${documentURI}, current page is ${window.location.pathname}`);
+        console.log(
+          `Ignoring update for ${documentURI}, current page is ${window.location.pathname}`,
+        );
         return;
       }
 
@@ -300,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
               type: "openDocument",
               uri: target,
               takeFocus: true,
-            })
+            }),
           );
         } else {
           // SINGLE-PAGE MODE: Send message to open in editor + update preview
@@ -310,7 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
               uri: target,
               takeFocus: true,
               updatePreview: true,
-            })
+            }),
           );
         }
       }

@@ -424,11 +424,13 @@ func (s *Server) CloseDocument(documentURI string) {
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling close event to JSON: %v\n", err)
+
 		return
 	}
 
 	// Broadcast directly to connected clients
 	clientsMutex.RLock()
+
 	clientList := make([]*websocket.Conn, 0, len(clients))
 	for client := range clients {
 		clientList = append(clientList, client)
@@ -460,11 +462,13 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
+
 		return
 	}
 
 	// Broadcast directly to connected clients
 	clientsMutex.RLock()
+
 	clientList := make([]*websocket.Conn, 0, len(clients))
 	for client := range clients {
 		clientList = append(clientList, client)
@@ -527,6 +531,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Send initial config to client
 	go func() {
 		time.Sleep(100 * time.Millisecond) // Brief delay to ensure WebSocket is ready
+
 		configMsg := map[string]interface{}{
 			"Type":       "config",
 			"EnableTabs": EnableTabs,
@@ -579,6 +584,7 @@ func handleMessages() {
 
 		// Create snapshot of clients with read lock
 		clientsMutex.RLock()
+
 		clientList := make([]*websocket.Conn, 0, len(clients))
 		for client := range clients {
 			clientList = append(clientList, client)
@@ -587,10 +593,12 @@ func handleMessages() {
 
 		// Send to clients without holding the lock
 		var failedClients []*websocket.Conn
+
 		for _, client := range clientList {
 			if err := client.WriteMessage(websocket.TextMessage, msg); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					fmt.Fprintf(os.Stderr, "%s error while writing message: %v\n", logTime(), err)
+
 					failedClients = append(failedClients, client)
 				}
 			}

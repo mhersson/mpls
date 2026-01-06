@@ -21,6 +21,7 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 		doc := documentRegistry.GetMostRecentDocument()
 
 		var previewURL string
+
 		if previewserver.EnableTabs && doc != nil {
 			// MULTI-TAB MODE: Open at file-specific URL
 			relativePath := documentRegistry.GetRelativePath(doc.URI)
@@ -51,11 +52,13 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 		// This ensures preview shows content when opened with --no-auto
 		if doc != nil && doc.HTML != "" {
 			documentURI := ""
+
 			if previewserver.EnableTabs {
 				relativePath := documentRegistry.GetRelativePath(doc.URI)
 				if relativePath == "" {
 					relativePath = "/"
 				}
+
 				documentURI = relativePath
 			}
 

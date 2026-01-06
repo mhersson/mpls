@@ -66,6 +66,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 	if previewserver.EnableTabs {
 		// MULTI-TAB MODE: Open new browser tab at file-specific URL
 		previewURL := fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
+
 		err = previewserver.Openbrowser(previewURL, previewserver.Browser)
 		if err != nil {
 			_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - failed to open browser: "+err.Error()))
@@ -75,6 +76,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 		if len(previewserver.GetClients()) == 0 {
 			// No browser open yet - open at root
 			previewURL := fmt.Sprintf("http://localhost:%d/", previewServer.Port)
+
 			err = previewserver.Openbrowser(previewURL, previewserver.Browser)
 			if err != nil {
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - failed to open browser: "+err.Error()))
@@ -149,6 +151,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 			if previewserver.EnableTabs {
 				documentURI = relativePath
 			}
+
 			previewServer.UpdateWithURI(filename, documentURI, html, meta)
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
 			docState.Content = c.Text
@@ -168,6 +171,7 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 			if previewserver.EnableTabs {
 				documentURI = relativePath
 			}
+
 			previewServer.UpdateWithURI(filename, documentURI, html, meta)
 		}
 	}
@@ -225,6 +229,7 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 	if previewserver.EnableTabs {
 		documentURI = relativePath
 	}
+
 	previewServer.UpdateWithURI(filename, documentURI, html, meta)
 
 	return nil
