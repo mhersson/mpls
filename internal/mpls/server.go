@@ -1,6 +1,7 @@
 package mpls
 
 import (
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	serverPkg "github.com/mhersson/glsp/server"
 	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
+	"github.com/mhersson/mpls/pkg/plantuml"
 
 	// Must include a backend implementation
 	// See CommonLog for other options: https://github.com/tliron/commonlog
@@ -126,6 +128,33 @@ func startDocumentRequestHandler(ctx *glsp.Context) {
 			// Mark first preview shown for --no-auto behavior
 			if result.Success {
 				documentRegistry.MarkFirstPreviewShown()
+
+				// In single-page mode with updatePreview, send WebSocket update
+				if req.UpdatePreview && !previewserver.EnableTabs {
+					docState, exists := documentRegistry.Get(fileURI)
+					if !exists {
+						// Document not in registry, load from disk
+						content, err := loadDocument(fileURI)
+						if err == nil {
+							html, meta := parser.HTML(content, fileURI)
+							html, _, _ = plantuml.InsertPlantumlDiagram(html, true, []plantuml.Plantuml{})
+
+							docState = &DocumentState{
+								URI:       fileURI,
+								Content:   content,
+								HTML:      html,
+								Meta:      meta,
+								PlantUMLs: []plantuml.Plantuml{},
+							}
+							documentRegistry.Register(fileURI, docState)
+						}
+					}
+
+					if docState != nil {
+						filename := filepath.Base(fileURI)
+						previewServer.UpdateWithURI(filename, "", docState.HTML, docState.Meta)
+					}
+				}
 			}
 		}
 	}()

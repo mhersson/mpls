@@ -19,16 +19,22 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 
 		// Get the most recent document to determine which URL to open
 		doc := documentRegistry.GetMostRecentDocument()
-		previewURL := fmt.Sprintf("http://localhost:%d", previewServer.Port)
 
-		if doc != nil {
+		var previewURL string
+		if previewserver.EnableTabs && doc != nil {
+			// MULTI-TAB MODE: Open at file-specific URL
 			relativePath := documentRegistry.GetRelativePath(doc.URI)
 			if relativePath != "" {
 				previewURL = fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
+			} else {
+				previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
 			}
+		} else {
+			// SINGLE-PAGE MODE: Always open at root
+			previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
 		}
 
-		// Open browser at document-specific URL
+		// Open browser
 		err := previewserver.Openbrowser(previewURL, previewserver.Browser)
 		if err != nil {
 			return nil, err
@@ -44,12 +50,16 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 		// If there are documents in registry, update preview with the most recent one
 		// This ensures preview shows content when opened with --no-auto
 		if doc != nil && doc.HTML != "" {
-			relativePath := documentRegistry.GetRelativePath(doc.URI)
-			if relativePath == "" {
-				relativePath = "/"
+			documentURI := ""
+			if previewserver.EnableTabs {
+				relativePath := documentRegistry.GetRelativePath(doc.URI)
+				if relativePath == "" {
+					relativePath = "/"
+				}
+				documentURI = relativePath
 			}
 
-			previewServer.UpdateWithURI(filepath.Base(doc.URI), relativePath, doc.HTML, doc.Meta)
+			previewServer.UpdateWithURI(filepath.Base(doc.URI), documentURI, doc.HTML, doc.Meta)
 		}
 	default:
 		return nil, errors.New("unknown command")

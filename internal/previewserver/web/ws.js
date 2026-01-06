@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let isReloading = false;
   let lastScrollTarget = null;
+  let enableTabsMode = false; // Global variable for preview mode
 
   // Utility functions
   function $(id) {
@@ -200,9 +201,17 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const response = JSON.parse(event.data);
 
+      // Handle config message
+      if (response.Type === "config") {
+        enableTabsMode = response.EnableTabs || false;
+        console.log(`Preview mode: ${enableTabsMode ? 'multi-tab' : 'single-page'}`);
+        return;
+      }
+
       // Handle closeDocument message
       if (response.Type === "closeDocument") {
-        if (response.DocumentURI === window.location.pathname) {
+        // Only close window in multi-tab mode
+        if (enableTabsMode && response.DocumentURI === window.location.pathname) {
           console.log(`Closing preview for ${response.DocumentURI}`);
           window.close();
         }
@@ -284,15 +293,26 @@ document.addEventListener("DOMContentLoaded", () => {
       if (isInternal && target) {
         event.preventDefault();
 
-        // Request to open in editor (takeFocus: true to open in main window, not split)
-        // The browser tab will be opened by TextDocumentDidOpen after the file is loaded
-        ws.send(
-          JSON.stringify({
-            type: "openDocument",
-            uri: target,
-            takeFocus: true,
-          })
-        );
+        if (enableTabsMode) {
+          // MULTI-TAB MODE: Send message to open in editor (browser tab opens via TextDocumentDidOpen)
+          ws.send(
+            JSON.stringify({
+              type: "openDocument",
+              uri: target,
+              takeFocus: true,
+            })
+          );
+        } else {
+          // SINGLE-PAGE MODE: Send message to open in editor + update preview
+          ws.send(
+            JSON.stringify({
+              type: "openDocument",
+              uri: target,
+              takeFocus: true,
+              updatePreview: true,
+            })
+          );
+        }
       }
     });
   }

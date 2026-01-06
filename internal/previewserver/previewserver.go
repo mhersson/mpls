@@ -33,6 +33,7 @@ var (
 	Theme                string
 	FixedPort            int
 	OpenBrowserOnStartup bool
+	EnableTabs           bool
 
 	//go:embed web/index.html
 	indexHTML string
@@ -57,8 +58,9 @@ var (
 )
 
 type OpenDocumentRequest struct {
-	URI       string
-	TakeFocus bool
+	URI           string
+	TakeFocus     bool
+	UpdatePreview bool
 }
 
 type Server struct {
@@ -110,6 +112,19 @@ func WaitForClients(timeout time.Duration) error {
 			}
 		}
 	}
+}
+
+// GetClients returns a slice of all currently connected WebSocket clients.
+func GetClients() []*websocket.Conn {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
+
+	result := make([]*websocket.Conn, 0, len(clients))
+	for client := range clients {
+		result = append(result, client)
+	}
+
+	return result
 }
 
 // GetChromaStyleForTheme returns a recommended chroma syntax highlighting style for a given theme.
@@ -514,6 +529,17 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	clients[conn] = true
 	clientsMutex.Unlock()
 
+	// Send initial config to client
+	go func() {
+		time.Sleep(100 * time.Millisecond) // Brief delay to ensure WebSocket is ready
+		configMsg := map[string]interface{}{
+			"Type":       "config",
+			"EnableTabs": EnableTabs,
+		}
+		msgJSON, _ := json.Marshal(configMsg)
+		conn.WriteMessage(websocket.TextMessage, msgJSON)
+	}()
+
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -526,9 +552,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// Try to parse as incoming request from browser
 		var incomingMsg struct {
-			Type      string `json:"type"`
-			URI       string `json:"uri"`
-			TakeFocus bool   `json:"takeFocus"`
+			Type          string `json:"type"`
+			URI           string `json:"uri"`
+			TakeFocus     bool   `json:"takeFocus"`
+			UpdatePreview bool   `json:"updatePreview"`
 		}
 
 		if err := json.Unmarshal(msg, &incomingMsg); err == nil {
@@ -537,8 +564,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			case "openDocument":
 				// Send to LSP request channel
 				LSPRequestChan <- OpenDocumentRequest{
-					URI:       incomingMsg.URI,
-					TakeFocus: incomingMsg.TakeFocus,
+					URI:           incomingMsg.URI,
+					TakeFocus:     incomingMsg.TakeFocus,
+					UpdatePreview: incomingMsg.UpdatePreview,
 				}
 
 				continue

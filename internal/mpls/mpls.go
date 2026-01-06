@@ -6,6 +6,7 @@ import (
 	"github.com/mhersson/glsp"
 	protocol316 "github.com/mhersson/glsp/protocol_3_16"
 	protocol "github.com/mhersson/glsp/protocol_mpls"
+	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/mhersson/mpls/pkg/plantuml"
 )
@@ -35,8 +36,9 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 		documentRegistry.Register(uri, docState)
 	}
 
-	// Check if should auto-open
-	if !documentRegistry.ShouldAutoOpen() {
+	// In single-page mode, always update regardless of --no-auto
+	// In multi-tab mode, respect ShouldAutoOpen
+	if previewserver.EnableTabs && !documentRegistry.ShouldAutoOpen() {
 		return nil
 	}
 
@@ -56,7 +58,13 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 		relativePath = "/"
 	}
 
-	previewServer.UpdateWithURI(filename, relativePath, html, meta)
+	// Set documentURI based on mode
+	documentURI := ""
+	if previewserver.EnableTabs {
+		documentURI = relativePath
+	}
+
+	previewServer.UpdateWithURI(filename, documentURI, html, meta)
 
 	return nil
 }
