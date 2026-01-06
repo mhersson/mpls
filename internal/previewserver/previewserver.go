@@ -51,7 +51,7 @@ var (
 
 	broadcast      = make(chan []byte)
 	clients        = make(map[*websocket.Conn]bool)
-	clientsMutex   sync.Mutex
+	clientsMutex   sync.RWMutex
 	stopChan       = make(chan os.Signal, 1)
 	LSPRequestChan = make(chan OpenDocumentRequest)
 )
@@ -106,7 +106,11 @@ func WaitForClients(timeout time.Duration) error {
 		case <-ctx.Done():
 			return fmt.Errorf("timeout waiting for clients to connect")
 		case <-ticker.C:
-			if len(clients) > 0 {
+			clientsMutex.RLock()
+			hasClients := len(clients) > 0
+			clientsMutex.RUnlock()
+
+			if hasClients {
 				return nil
 			}
 		}
@@ -115,8 +119,8 @@ func WaitForClients(timeout time.Duration) error {
 
 // GetClients returns a slice of all currently connected WebSocket clients.
 func GetClients() []*websocket.Conn {
-	clientsMutex.Lock()
-	defer clientsMutex.Unlock()
+	clientsMutex.RLock()
+	defer clientsMutex.RUnlock()
 
 	result := make([]*websocket.Conn, 0, len(clients))
 	for client := range clients {
@@ -424,12 +428,12 @@ func (s *Server) CloseDocument(documentURI string) {
 	}
 
 	// Broadcast directly to connected clients
-	clientsMutex.Lock()
+	clientsMutex.RLock()
 	clientList := make([]*websocket.Conn, 0, len(clients))
 	for client := range clients {
 		clientList = append(clientList, client)
 	}
-	clientsMutex.Unlock()
+	clientsMutex.RUnlock()
 
 	// Send to all clients without holding the lock
 	for _, client := range clientList {
@@ -460,12 +464,12 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 	}
 
 	// Broadcast directly to connected clients
-	clientsMutex.Lock()
+	clientsMutex.RLock()
 	clientList := make([]*websocket.Conn, 0, len(clients))
 	for client := range clients {
 		clientList = append(clientList, client)
 	}
-	clientsMutex.Unlock()
+	clientsMutex.RUnlock()
 
 	// Send to all clients without holding the lock
 	for _, client := range clientList {
@@ -573,16 +577,34 @@ func handleMessages() {
 	for {
 		msg := <-broadcast
 
-		clientsMutex.Lock()
+		// Create snapshot of clients with read lock
+		clientsMutex.RLock()
+		clientList := make([]*websocket.Conn, 0, len(clients))
 		for client := range clients {
-			err := client.WriteMessage(websocket.TextMessage, msg)
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				fmt.Fprintf(os.Stderr, "%s error while writing message: %v\n", logTime(), err)
+			clientList = append(clientList, client)
+		}
+		clientsMutex.RUnlock()
+
+		// Send to clients without holding the lock
+		var failedClients []*websocket.Conn
+		for _, client := range clientList {
+			if err := client.WriteMessage(websocket.TextMessage, msg); err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					fmt.Fprintf(os.Stderr, "%s error while writing message: %v\n", logTime(), err)
+					failedClients = append(failedClients, client)
+				}
+			}
+		}
+
+		// Clean up failed clients with write lock
+		if len(failedClients) > 0 {
+			clientsMutex.Lock()
+			for _, client := range failedClients {
 				client.Close()
 				delete(clients, client)
 			}
+			clientsMutex.Unlock()
 		}
-		clientsMutex.Unlock()
 	}
 }
 
