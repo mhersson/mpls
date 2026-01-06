@@ -1,6 +1,7 @@
 package mpls
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"time"
@@ -24,6 +25,8 @@ var (
 	TextDocumentUseFullSync bool
 	Version                 string
 	workspaceRoot           string
+	serverCtx               context.Context
+	serverCancel            context.CancelFunc
 )
 
 func log(message string) string {
@@ -31,6 +34,9 @@ func log(message string) string {
 }
 
 func Run() {
+	serverCtx, serverCancel = context.WithCancel(context.Background())
+	defer serverCancel()
+
 	previewServer = previewserver.New()
 	go previewServer.Start()
 
@@ -91,6 +97,7 @@ func setTrace(_ *glsp.Context, params *protocol316.SetTraceParams) error {
 }
 
 func shutdown(_ *glsp.Context) error {
+	serverCancel() // Signal goroutine to exit
 	previewServer.Stop()
 	protocol316.SetTraceValue(protocol316.TraceValueOff)
 
@@ -103,56 +110,62 @@ func boolPtr(b bool) *bool {
 
 func startDocumentRequestHandler(ctx *glsp.Context) {
 	go func() {
-		for req := range previewserver.LSPRequestChan {
-			// Convert workspace-relative path to file:// URI
-			relativePath := req.URI
-			if strings.HasPrefix(relativePath, "/") {
-				relativePath = strings.TrimPrefix(relativePath, "/")
-			}
+		for {
+			select {
+			case <-serverCtx.Done():
+				// Clean exit when server is shutting down
+				return
+			case req := <-previewserver.LSPRequestChan:
+				// Convert workspace-relative path to file:// URI
+				relativePath := req.URI
+				if strings.HasPrefix(relativePath, "/") {
+					relativePath = strings.TrimPrefix(relativePath, "/")
+				}
 
-			// Construct absolute file path
-			fileURI := documentRegistry.GetFileURI("/" + relativePath)
+				// Construct absolute file path
+				fileURI := documentRegistry.GetFileURI("/" + relativePath)
 
-			// Create ShowDocumentParams
-			params := protocol316.ShowDocumentParams{
-				URI:       protocol316.URI(fileURI),
-				External:  boolPtr(false),
-				TakeFocus: boolPtr(req.TakeFocus),
-			}
+				// Create ShowDocumentParams
+				params := protocol316.ShowDocumentParams{
+					URI:       protocol316.URI(fileURI),
+					External:  boolPtr(false),
+					TakeFocus: boolPtr(req.TakeFocus),
+				}
 
-			// Send window/showDocument request to client
-			var result protocol316.ShowDocumentResult
+				// Send window/showDocument request to client
+				var result protocol316.ShowDocumentResult
 
-			ctx.Call(protocol316.ServerWindowShowDocument, params, &result)
+				ctx.Call(protocol316.ServerWindowShowDocument, params, &result)
 
-			// Mark first preview shown for --no-auto behavior
-			if result.Success {
-				documentRegistry.MarkFirstPreviewShown()
+				// Mark first preview shown for --no-auto behavior
+				if result.Success {
+					documentRegistry.MarkFirstPreviewShown()
 
-				// In single-page mode with updatePreview, send WebSocket update
-				if req.UpdatePreview && !previewserver.EnableTabs {
-					docState, exists := documentRegistry.Get(fileURI)
-					if !exists {
-						// Document not in registry, load from disk
-						content, err := loadDocument(fileURI)
-						if err == nil {
-							html, meta := parser.HTML(content, fileURI)
-							html, _, _ = plantuml.InsertPlantumlDiagram(html, true, []plantuml.Plantuml{})
+					// In single-page mode with updatePreview, send WebSocket update
+					if req.UpdatePreview && !previewserver.EnableTabs {
+						docState, exists := documentRegistry.Get(fileURI)
+						if !exists {
+							// Document not in registry, load from disk
+							content, err := loadDocument(fileURI)
+							if err == nil {
+								html, meta := parser.HTML(content, fileURI)
+								html, _, _ = plantuml.InsertPlantumlDiagram(html, true, []plantuml.Plantuml{})
 
-							docState = &DocumentState{
-								URI:       fileURI,
-								Content:   content,
-								HTML:      html,
-								Meta:      meta,
-								PlantUMLs: []plantuml.Plantuml{},
+								docState = &DocumentState{
+									URI:       fileURI,
+									Content:   content,
+									HTML:      html,
+									Meta:      meta,
+									PlantUMLs: []plantuml.Plantuml{},
+								}
+								documentRegistry.Register(fileURI, docState)
 							}
-							documentRegistry.Register(fileURI, docState)
 						}
-					}
 
-					if docState != nil {
-						filename := filepath.Base(fileURI)
-						previewServer.UpdateWithURI(filename, "", docState.HTML, docState.Meta)
+						if docState != nil {
+							filename := filepath.Base(fileURI)
+							previewServer.UpdateWithURI(filename, "", docState.HTML, docState.Meta)
+						}
 					}
 				}
 			}
