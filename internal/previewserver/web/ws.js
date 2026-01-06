@@ -1,24 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
   const ws = new WebSocket("ws://localhost:%d/ws");
 
-  const DEBOUNCE_DELAY = 1000;
   const MERMAID_RENDER_DELAY = 100;
   const SCROLL_OFFSET = 150;
   const SCROLL_RETRY_DELAY = 50;
   const MAX_SCROLL_RETRIES = 10;
 
-  let debounceTimeout;
   let isReloading = false;
   let lastScrollTarget = null;
 
   // Utility functions
-  function debounce(func, delay) {
-    return function (...args) {
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(() => func.apply(this, args), delay);
-    };
-  }
-
   function $(id) {
     return document.getElementById(id);
   }
@@ -28,31 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Content management
-  const saveContentToLocalStorage = debounce((renderedHtml) => {
-    try {
-      localStorage.setItem("savedContent", renderedHtml);
-    } catch (error) {
-      console.warn("Failed to save to localStorage:", error);
-    }
-  }, DEBOUNCE_DELAY);
-
   function updateContent(renderedHtml) {
     const contentElement = $("content");
     if (contentElement) {
       contentElement.innerHTML = renderedHtml;
-    }
-  }
-
-  function loadSavedContent() {
-    try {
-      const savedContent = localStorage.getItem("savedContent");
-      if (savedContent) {
-        updateContent(savedContent);
-        // Render mermaid and initialize modals after loading saved content
-        renderMermaidAndScroll();
-      }
-    } catch (error) {
-      console.warn("Failed to load from localStorage:", error);
     }
   }
 
@@ -229,16 +199,25 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleWebSocketMessage(event) {
     try {
       const response = JSON.parse(event.data);
-      const { HTML: renderedHtml, Title: responseTitle, Meta: meta } = response;
 
-      const title = `mpls - ${responseTitle}`;
-      const pin = $("pin");
-
-      // Check if preview is pinned
-      if (pin?.checked && title !== document.title) {
-        console.log("Preview is pinned - ignoring event");
+      // Handle closeDocument message
+      if (response.Type === "closeDocument") {
+        if (response.DocumentURI === window.location.pathname) {
+          console.log(`Closing preview for ${response.DocumentURI}`);
+          window.close();
+        }
         return;
       }
+
+      const { HTML: renderedHtml, Title: responseTitle, Meta: meta, DocumentURI: documentURI } = response;
+
+      // If DocumentURI is provided, check if it matches current page
+      if (documentURI && documentURI !== window.location.pathname) {
+        console.log(`Ignoring update for ${documentURI}, current page is ${window.location.pathname}`);
+        return;
+      }
+
+      const title = `mpls - ${responseTitle}`;
 
       // Update title if changed
       if (title !== document.title) {
@@ -257,7 +236,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Update content
       updateContent(renderedHtml);
-      saveContentToLocalStorage(renderedHtml);
 
       // Render and scroll
       await renderMermaidAndScroll();
@@ -275,10 +253,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleWebSocketOpen() {
     console.log("WebSocket connection established");
+    setupLinkInterception();
   }
 
   function handleWebSocketError(event) {
     console.error("WebSocket error:", event);
+  }
+
+  // Link interception for multi-file navigation
+  function setupLinkInterception() {
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest("a[href]");
+      if (!link) return;
+
+      const href = link.getAttribute("href");
+      const isInternal = link.hasAttribute("data-mpls-internal");
+      const target = link.getAttribute("data-mpls-target");
+
+      // Anchor-only links - let browser handle
+      if (href.startsWith("#")) {
+        return;
+      }
+
+      // External links - let browser handle
+      if (href.startsWith("http://") || href.startsWith("https://")) {
+        return;
+      }
+
+      // Internal markdown links
+      if (isInternal && target) {
+        event.preventDefault();
+
+        // Request to open in editor (takeFocus: true to open in main window, not split)
+        // The browser tab will be opened by TextDocumentDidOpen after the file is loaded
+        ws.send(
+          JSON.stringify({
+            type: "openDocument",
+            uri: target,
+            takeFocus: true,
+          })
+        );
+      }
+    });
   }
 
   // Intersection Observer for lazy loading (optional enhancement)
@@ -317,9 +333,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ws.addEventListener("error", handleWebSocketError);
 
   // Window event listeners
-  window.addEventListener("load", () => {
-    loadSavedContent();
+  window.addEventListener("load", async () => {
     setupLazyLoading();
+    // Render mermaid diagrams that are already in the HTML from HTTP GET
+    await renderMermaidAndScroll();
   });
 
   window.addEventListener("beforeunload", () => {

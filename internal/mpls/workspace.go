@@ -3,21 +3,33 @@ package mpls
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/mhersson/glsp"
 	protocol "github.com/mhersson/glsp/protocol_3_16"
 	"github.com/mhersson/mpls/internal/previewserver"
-	"github.com/mhersson/mpls/pkg/parser"
 )
 
 func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandParams) (any, error) {
 	switch param.Command {
 	case "open-preview":
 		_ = protocol.Trace(ctx, protocol.MessageTypeInfo,
-			log("WorkspaceExecuteCommand - Open preview: "+currentURI))
+			log("WorkspaceExecuteCommand - Open preview"))
 
-		err := previewserver.Openbrowser(fmt.Sprintf("http://localhost:%d", previewServer.Port), previewserver.Browser)
+		// Get the most recent document to determine which URL to open
+		doc := documentRegistry.GetMostRecentDocument()
+		previewURL := fmt.Sprintf("http://localhost:%d", previewServer.Port)
+
+		if doc != nil {
+			relativePath := documentRegistry.GetRelativePath(doc.URI)
+			if relativePath != "" {
+				previewURL = fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
+			}
+		}
+
+		// Open browser at document-specific URL
+		err := previewserver.Openbrowser(previewURL, previewserver.Browser)
 		if err != nil {
 			return nil, err
 		}
@@ -26,21 +38,21 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 			return nil, err
 		}
 
-		content, err = loadDocument(currentURI)
-		if err != nil {
-			return nil, err
+		// Mark first preview shown for --no-auto behavior
+		documentRegistry.MarkFirstPreviewShown()
+
+		// If there are documents in registry, update preview with the most recent one
+		// This ensures preview shows content when opened with --no-auto
+		if doc != nil && doc.HTML != "" {
+			relativePath := documentRegistry.GetRelativePath(doc.URI)
+			if relativePath == "" {
+				relativePath = "/"
+			}
+
+			previewServer.UpdateWithURI(filepath.Base(doc.URI), relativePath, doc.HTML, doc.Meta)
 		}
-
-		html, meta := parser.HTML(content, currentURI)
-
-		html, err = insertPlantumlDiagram(html, true)
-		if err != nil {
-			_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("WorkspaceExcueCommand - Open preview: "+err.Error()))
-		}
-
-		previewServer.Update(filename, html, meta)
 	default:
-		return nil, errors.New("unknow  command")
+		return nil, errors.New("unknown command")
 	}
 
 	return nil, nil

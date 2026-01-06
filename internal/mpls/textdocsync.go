@@ -1,12 +1,10 @@
 package mpls
 
 import (
-	"html"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
-	"time"
 
 	"github.com/mhersson/glsp"
 	protocol "github.com/mhersson/glsp/protocol_3_16"
@@ -16,11 +14,7 @@ import (
 )
 
 var (
-	content             string
-	currentURI          string
-	filename            string
 	previewServer       *previewserver.Server
-	plantumls           []plantuml.Plantuml
 	validFileExtensions = []string{".md", ".markdown", ".mkd", ".mkdn", ".mdwn"}
 )
 
@@ -31,33 +25,52 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 
 	var err error
 
-	currentURI = params.TextDocument.URI
-	filename = filepath.Base(currentURI)
-	plantumls = []plantuml.Plantuml{}
+	uri := params.TextDocument.URI
+	content := params.TextDocument.Text
 
 	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+params.TextDocument.URI))
 
-	if !previewserver.OpenBrowserOnStartup && content == "" {
-		return nil
-	}
+	// Always render HTML (even with --no-auto, so it's ready when user runs open-preview)
+	html, meta := parser.HTML(content, uri)
 
-	doc := params.TextDocument
+	var plantUMLs []plantuml.Plantuml
 
-	content = doc.Text
-
-	// Give the browser time to connect
-	if err = previewserver.WaitForClients(10 * time.Second); err != nil {
-		return err
-	}
-
-	html, meta := parser.HTML(content, currentURI)
-
-	html, err = insertPlantumlDiagram(html, true)
+	html, plantUMLs, err = plantuml.InsertPlantumlDiagram(html, true, []plantuml.Plantuml{})
 	if err != nil {
 		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
 	}
 
-	previewServer.Update(filename, html, meta)
+	// Register document in registry with rendered content
+	docState := &DocumentState{
+		URI:       uri,
+		Content:   content,
+		HTML:      html,
+		Meta:      meta,
+		PlantUMLs: plantUMLs,
+	}
+	documentRegistry.Register(uri, docState)
+
+	// Check if should auto-open browser
+	if !documentRegistry.ShouldAutoOpen() {
+		// Don't open browser, just register the document
+		return nil
+	}
+
+	// Get relative path for URL
+	relativePath := documentRegistry.GetRelativePath(uri)
+	if relativePath == "" {
+		relativePath = "/"
+	}
+
+	// Construct preview URL
+	previewURL := fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
+
+	// Open browser at file-specific URL
+	// The browser will load content via HTTP GET, not via WebSocket update
+	err = previewserver.Openbrowser(previewURL, previewserver.Browser)
+	if err != nil {
+		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - failed to open browser: "+err.Error()))
+	}
 
 	return nil
 }
@@ -69,45 +82,65 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 
 	var err error
 
-	switchedDocument := false
+	uri := params.TextDocument.URI
+	filename := filepath.Base(uri)
+
+	// Get document state from registry
+	docState, exists := documentRegistry.Get(uri)
+	if !exists {
+		// Document not in registry, load from disk
+		content, err := loadDocument(uri)
+		if err != nil {
+			return err
+		}
+
+		docState = &DocumentState{
+			URI:       uri,
+			Content:   content,
+			PlantUMLs: []plantuml.Plantuml{},
+		}
+		documentRegistry.Register(uri, docState)
+
+		_ = protocol.Trace(ctx, protocol.MessageTypeInfo,
+			log("TextDocumentUriDidChange - loaded new document: "+uri))
+	}
+
+	// Get relative path for URI filtering
+	relativePath := documentRegistry.GetRelativePath(uri)
+	if relativePath == "" {
+		relativePath = "/"
+	}
 
 	for _, change := range params.ContentChanges {
 		if c, ok := change.(protocol.TextDocumentContentChangeEvent); ok {
-			if params.TextDocument.URI != currentURI {
-				_ = protocol.Trace(ctx, protocol.MessageTypeInfo,
-					log("TextDocumentUriDidChange - switching document: "+params.TextDocument.URI))
+			startIndex, endIndex := c.Range.IndexesIn(docState.Content)
+			docState.Content = docState.Content[:startIndex] + c.Text + docState.Content[endIndex:]
 
-				content, err = loadDocument(params.TextDocument.URI)
-				if err != nil {
-					return err
-				}
+			html, meta := parser.HTML(docState.Content, uri)
 
-				currentURI = params.TextDocument.URI
-				filename = filepath.Base(currentURI)
-
-				switchedDocument = true
-			}
-
-			startIndex, endIndex := c.Range.IndexesIn(content)
-			content = content[:startIndex] + c.Text + content[endIndex:]
-
-			html, meta := parser.HTML(content, currentURI)
-
-			html, err = insertPlantumlDiagram(html, switchedDocument)
+			html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, false, docState.PlantUMLs)
 			if err != nil {
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
 			}
 
-			previewServer.Update(filename, html, meta)
+			docState.HTML = html
+			docState.Meta = meta
+
+			previewServer.UpdateWithURI(filename, relativePath, html, meta)
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
-			html, meta := parser.HTML(c.Text, currentURI)
+			docState.Content = c.Text
 
-			html, err = insertPlantumlDiagram(html, false)
+			html, meta := parser.HTML(c.Text, uri)
+
+			html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, false, docState.PlantUMLs)
 			if err != nil {
 				_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidChange - plantuml: "+err.Error()))
 			}
 
-			previewServer.Update(filename, html, meta)
+			docState.HTML = html
+			docState.Meta = meta
+
+			previewServer.UpdateWithURI(filename, relativePath, html, meta)
 		}
 	}
 
@@ -121,24 +154,67 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 
 	var err error
 
-	content, err = loadDocument(params.TextDocument.URI)
+	uri := params.TextDocument.URI
+	filename := filepath.Base(uri)
+
+	// Reload document from disk
+	content, err := loadDocument(uri)
 	if err != nil {
 		return err
 	}
 
-	html, meta := parser.HTML(content, currentURI)
-
-	html, err = insertPlantumlDiagram(html, true)
-	if err != nil {
-		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - plantuml: "+err.Error()))
+	// Get document state from registry
+	docState, exists := documentRegistry.Get(uri)
+	if !exists {
+		docState = &DocumentState{
+			URI:       uri,
+			PlantUMLs: []plantuml.Plantuml{},
+		}
 	}
 
-	previewServer.Update(filename, html, meta)
+	docState.Content = content
+
+	html, meta := parser.HTML(content, uri)
+
+	html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, true, docState.PlantUMLs)
+	if err != nil {
+		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidSave - plantuml: "+err.Error()))
+	}
+
+	docState.HTML = html
+	docState.Meta = meta
+
+	documentRegistry.Register(uri, docState)
+
+	// Get relative path for URI filtering
+	relativePath := documentRegistry.GetRelativePath(uri)
+	if relativePath == "" {
+		relativePath = "/"
+	}
+
+	previewServer.UpdateWithURI(filename, relativePath, html, meta)
 
 	return nil
 }
 
-func TextDocumentDidClose(_ *glsp.Context, _ *protocol.DidCloseTextDocumentParams) error {
+func TextDocumentDidClose(ctx *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
+	if !slices.Contains(validFileExtensions, filepath.Ext(params.TextDocument.URI)) {
+		return nil
+	}
+
+	uri := params.TextDocument.URI
+
+	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("TextDocumentDidClose: "+uri))
+
+	// Get relative path for the closed document
+	relativePath := documentRegistry.GetRelativePath(uri)
+	if relativePath == "" {
+		relativePath = "/"
+	}
+
+	// Send close message to browser
+	previewServer.CloseDocument(relativePath)
+
 	return nil
 }
 
@@ -151,90 +227,4 @@ func loadDocument(uri string) (string, error) {
 	}
 
 	return string(c), nil
-}
-
-func insertPlantumlDiagram(data string, generate bool) (string, error) {
-	const startDelimiter = `<pre><code class="language-plantuml">`
-
-	var builder strings.Builder
-
-	var err error
-
-	numDiagrams := 0
-	start := 0
-
-	for {
-		s, e := extractPlantUMLSection(data[start:])
-		if s == -1 || e == -1 {
-			builder.WriteString(data[start:])
-
-			break
-		}
-
-		builder.WriteString(data[start : start+s])
-
-		htmlEncodedUml := data[start+s+len(startDelimiter) : start+e]
-		uml := html.UnescapeString(htmlEncodedUml)
-
-		p := plantuml.Plantuml{}
-		p.EncodedUML = plantuml.Encode(uml)
-
-		generated := false
-
-		for _, enc := range plantumls {
-			if p.EncodedUML == enc.EncodedUML {
-				p.Diagram = enc.Diagram
-				generated = true
-
-				break
-			}
-		}
-
-		if !generated && generate {
-			p.Diagram, err = plantuml.GetDiagram(p.EncodedUML)
-			if err != nil {
-				return data, err
-			}
-		}
-
-		numDiagrams++
-
-		if generate {
-			if len(plantumls) < numDiagrams {
-				plantumls = append(plantumls, p)
-			} else {
-				plantumls[numDiagrams-1] = p
-			}
-
-			builder.WriteString(p.Diagram)
-		} else if len(plantumls) >= numDiagrams {
-			// Use existing until we save and generate a new one
-			builder.WriteString(plantumls[numDiagrams-1].Diagram)
-		}
-
-		start += e + 13
-	}
-
-	return builder.String(), nil
-}
-
-func extractPlantUMLSection(text string) (int, int) {
-	const startDelimiter = `<pre><code class="language-plantuml">`
-
-	const endDelimiter = "</code></pre>"
-
-	startIndex := strings.Index(text, startDelimiter)
-	if startIndex == -1 {
-		return -1, -1
-	}
-
-	endIndex := strings.Index(text[startIndex+len(startDelimiter):], endDelimiter)
-	if endIndex == -1 {
-		return startIndex, -1
-	}
-
-	// Calculate the actual end index in the original text
-	endIndex += startIndex + len(startDelimiter)
-
-	return startIndex, endIndex
 }

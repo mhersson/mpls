@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"sort"
@@ -20,6 +21,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/mhersson/mpls/pkg/parser"
+	"github.com/mhersson/mpls/pkg/plantuml"
 )
 
 // Current version of katex used: 0.16.25 (https://cdn.jsdelivr.net/npm/katex@0.16.25/dist/katex.min.css)
@@ -46,16 +49,24 @@ var (
 	//go:embed web/themes
 	themesFS embed.FS
 
-	broadcast    = make(chan []byte)
-	clients      = make(map[*websocket.Conn]bool)
-	clientsMutex sync.Mutex
-	stopChan     = make(chan os.Signal, 1)
+	broadcast      = make(chan []byte)
+	clients        = make(map[*websocket.Conn]bool)
+	clientsMutex   sync.Mutex
+	stopChan       = make(chan os.Signal, 1)
+	LSPRequestChan = make(chan OpenDocumentRequest)
 )
+
+type OpenDocumentRequest struct {
+	URI       string
+	TakeFocus bool
+}
 
 type Server struct {
 	Server         *http.Server
 	InitialContent string
 	Port           int
+	WorkspaceRoot  string
+	mutex          sync.RWMutex
 }
 
 func logTime() string {
@@ -187,8 +198,138 @@ func New() *Server {
 	}
 }
 
+func (s *Server) SetWorkspaceRoot(root string) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.WorkspaceRoot = root
+}
+
+func (s *Server) GetWorkspaceRoot() string {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	return s.WorkspaceRoot
+}
+
+func isStaticAsset(path string) bool {
+	staticPaths := []string{
+		"/styles.css",
+		"/katex.min.css",
+		"/mermaid.min.js",
+		"/ws.js",
+		"/ws",
+	}
+
+	if slices.Contains(staticPaths, path) {
+		return true
+	}
+
+	// Check for /fonts/ and /themes/ prefixes
+	return strings.HasPrefix(path, "/fonts/") || strings.HasPrefix(path, "/themes/")
+}
+
+func isValidMarkdownExt(ext string) bool {
+	validExts := []string{".md", ".markdown", ".mkd", ".mkdn", ".mdwn"}
+
+	return slices.Contains(validExts, ext)
+}
+
+func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
+	workspaceRoot := s.GetWorkspaceRoot()
+
+	// If no workspace root, serve the initial content
+	if workspaceRoot == "" {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(s.InitialContent))
+
+		return
+	}
+
+	// Clean the URL path
+	urlPath := filepath.Clean(r.URL.Path)
+
+	// Remove leading slash for relative path
+	relativePath := strings.TrimPrefix(urlPath, "/")
+
+	// Check for directory traversal attempts
+	if strings.Contains(relativePath, "..") {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+
+		return
+	}
+
+	// Construct absolute file path
+	absolutePath := filepath.Join(workspaceRoot, relativePath)
+
+	// Normalize workspace root for comparison
+	normalizedRoot := parser.NormalizePath("file://" + workspaceRoot)
+
+	// Verify path is within workspace
+	normalizedPath := parser.NormalizePath("file://" + absolutePath)
+	if !strings.HasPrefix(normalizedPath, normalizedRoot) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+
+		return
+	}
+
+	// Verify markdown extension
+	ext := filepath.Ext(absolutePath)
+	if !isValidMarkdownExt(ext) {
+		http.Error(w, "Not a markdown file", http.StatusBadRequest)
+
+		return
+	}
+
+	// Load file content
+	content, err := os.ReadFile(absolutePath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+
+		return
+	}
+
+	// Render HTML
+	fileURI := "file://" + absolutePath
+	html, meta := parser.HTML(string(content), fileURI)
+
+	// Process PlantUML diagrams
+	html, _, err = plantuml.InsertPlantumlDiagram(html, true, []plantuml.Plantuml{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s error processing PlantUML: %v\n", logTime(), err)
+		// Continue without PlantUML if there's an error
+	}
+
+	// Create metadata table
+	metaJSON, _ := json.Marshal(meta)
+
+	var metaMap map[string]any
+	_ = json.Unmarshal(metaJSON, &metaMap)
+
+	metaHTML := ""
+	if len(metaMap) > 0 {
+		metaHTML = "<table>"
+		for key, value := range metaMap {
+			metaHTML += fmt.Sprintf("<tr><td>%s</td><td>%v</td></tr>", key, value)
+		}
+
+		metaHTML += "</table>"
+	}
+
+	// Create full HTML page
+	fullHTML := s.InitialContent
+	fullHTML = strings.Replace(fullHTML, `<div class="preview-content" id="content"></div>`,
+		fmt.Sprintf(`<div class="preview-content" id="content">%s</div>`, html), 1)
+	fullHTML = strings.Replace(fullHTML, `<div id="header-meta"></div>`,
+		fmt.Sprintf(`<div id="header-meta">%s</div>`, metaHTML), 1)
+	fullHTML = strings.Replace(fullHTML, `<summary id="header-summary"></summary>`,
+		fmt.Sprintf(`<summary id="header-summary">%s</summary>`, filepath.Base(absolutePath)), 1)
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(fullHTML))
+}
+
 func (s *Server) Start() {
-	http.HandleFunc("/", handleResponse("text/html", s.InitialContent))
+	// Static asset routes
 	http.HandleFunc("/styles.css", handleResponse("text/css", stylesCSS))
 	http.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
 	http.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
@@ -204,6 +345,30 @@ func (s *Server) Start() {
 
 	http.HandleFunc("/ws", handleWebSocket)
 
+	// Dynamic route handler for markdown files and root path
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Root path - serve initial content
+		if path == "/" || path == "" {
+			w.Header().Set("Content-Type", "text/html")
+			w.Write([]byte(s.InitialContent))
+
+			return
+		}
+
+		// Static assets are handled by other handlers above
+		// This shouldn't be reached for static assets, but check anyway
+		if isStaticAsset(path) {
+			http.NotFound(w, r)
+
+			return
+		}
+
+		// Treat as markdown file request
+		s.serveMarkdownFile(w, r)
+	})
+
 	signal.Notify(stopChan, os.Interrupt)
 
 	go handleMessages()
@@ -214,12 +379,10 @@ func (s *Server) Start() {
 		}
 	}()
 
-	if OpenBrowserOnStartup {
-		err := Openbrowser(fmt.Sprintf("http://localhost:%d", s.Port), Browser)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s error opening browser: %v\n", logTime(), err)
-		}
-	}
+	// Browser opening is handled by:
+	// 1. TextDocumentDidOpen when ShouldAutoOpen() returns true
+	// 2. The "open-preview" workspace command
+	// We don't open here because workspace root isn't set yet during initialization
 
 	// Wait for interrupt signal
 	<-stopChan
@@ -228,6 +391,45 @@ func (s *Server) Start() {
 
 // Update updates the current HTML content.
 func (s *Server) Update(filename, newContent string, meta map[string]any) {
+	s.UpdateWithURI(filename, "", newContent, meta)
+}
+
+// CloseDocument sends a close message to clients viewing the specified document.
+func (s *Server) CloseDocument(documentURI string) {
+	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
+
+	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s error connecting to server: %v\n", logTime(), err)
+
+		return
+	}
+
+	defer conn.Close()
+
+	type CloseEvent struct {
+		Type        string
+		DocumentURI string
+	}
+
+	e := CloseEvent{Type: "closeDocument", DocumentURI: documentURI}
+
+	eventJSON, err := json.Marshal(e)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshaling close event to JSON: %v\n", err)
+
+		return
+	}
+
+	// Send close message
+	err = conn.WriteMessage(websocket.TextMessage, eventJSON)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s error sending close message: %v\n", logTime(), err)
+	}
+}
+
+// UpdateWithURI updates the current HTML content with document URI for client filtering.
+func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, meta map[string]any) {
 	u := url.URL{Scheme: "ws", Host: s.Server.Addr, Path: "/ws"}
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -240,15 +442,16 @@ func (s *Server) Update(filename, newContent string, meta map[string]any) {
 	defer conn.Close()
 
 	type Event struct {
-		HTML  string
-		Title string
-		Meta  string
+		HTML        string
+		Title       string
+		Meta        string
+		DocumentURI string
 	}
 
 	t := strings.TrimSuffix(filename, ".md")
 	m := convertMetaToHTMLTable(meta)
 
-	e := Event{HTML: newContent, Title: t, Meta: m}
+	e := Event{HTML: newContent, Title: t, Meta: m, DocumentURI: documentURI}
 
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
@@ -320,6 +523,29 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 			break
 		}
+
+		// Try to parse as incoming request from browser
+		var incomingMsg struct {
+			Type      string `json:"type"`
+			URI       string `json:"uri"`
+			TakeFocus bool   `json:"takeFocus"`
+		}
+
+		if err := json.Unmarshal(msg, &incomingMsg); err == nil {
+			// Handle different message types
+			switch incomingMsg.Type {
+			case "openDocument":
+				// Send to LSP request channel
+				LSPRequestChan <- OpenDocumentRequest{
+					URI:       incomingMsg.URI,
+					TakeFocus: incomingMsg.TakeFocus,
+				}
+
+				continue
+			}
+		}
+
+		// Not a recognized request type, broadcast it (for backward compatibility)
 		broadcast <- msg
 	}
 }

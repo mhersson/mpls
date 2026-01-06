@@ -205,24 +205,24 @@ This should display the version of the `mpls` executable.
 
 The following options can be used when starting `mpls`:
 
-| Flag                     | Description                                                           |
-| ------------------------ | --------------------------------------------------------------------- |
-| `--browser`              | Specify web browser to use for the preview. **(1)**                   |
-| `--code-style`           | Sets the style for syntax highlighting in fenced code blocks. **(2)** |
-| `--theme`                | Set the preview theme (light, dark, or any of the provided themes). **(3)** |
-| `--list-themes`          | List all available themes and exit                                    |
+| Flag                     | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `--browser`              | Specify web browser to use for the preview. **(1)**                              |
+| `--code-style`           | Sets the style for syntax highlighting in fenced code blocks. **(2)**            |
+| `--theme`                | Set the preview theme (light, dark, or any of the provided themes). **(3)**      |
+| `--list-themes`          | List all available themes and exit                                               |
 | `--dark-mode`            | **DEPRECATED:** Use `--theme dark` instead. Will be removed in a future release. |
-| `--enable-emoji`         | Enable emoji support                                                  |
-| `--enable-footnotes`     | Enable footnotes                                                      |
-| `--enable-wikilinks`     | Enable rendering of [[wiki]] -style links                             |
-| `--full-sync`            | Sync the entire document for every change being made. **(4)**         |
-| `--no-auto`              | Don't open preview automatically                                      |
-| `--plantuml-disable-tls` | Disable encryption on requests to the PlantUML server                 |
-| `--plantuml-server`      | Specify the host for the PlantUML server                              |
-| `--plantuml-path`        | Specify the base path for the PlantUML server                         |
-| `--port`                 | Set a fixed port for the preview server                               |
-| `--version`              | Displays the mpls version.                                            |
-| `--help`                 | Displays help information about the available options.                |
+| `--enable-emoji`         | Enable emoji support                                                             |
+| `--enable-footnotes`     | Enable footnotes                                                                 |
+| `--enable-wikilinks`     | Enable rendering of [[wiki]] -style links                                        |
+| `--full-sync`            | Sync the entire document for every change being made. **(4)**                    |
+| `--no-auto`              | Don't open preview automatically                                                 |
+| `--plantuml-disable-tls` | Disable encryption on requests to the PlantUML server                            |
+| `--plantuml-server`      | Specify the host for the PlantUML server                                         |
+| `--plantuml-path`        | Specify the base path for the PlantUML server                                    |
+| `--port`                 | Set a fixed port for the preview server                                          |
+| `--version`              | Displays the mpls version.                                                       |
+| `--help`                 | Displays help information about the available options.                           |
 
 1. On Linux specify executable e.g "firefox" or "google-chrome", on MacOS name
    of Application e.g "Safari" or "Microsoft Edge", on Windows use full path. On
