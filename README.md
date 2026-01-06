@@ -28,7 +28,21 @@ users of Visual Studio Code, there is also a dedicated extension available at
 
 ## Features
 
-- Live Preview: Instantly see your Markdown changes reflected in the browser.
+- **Live Preview**: Instantly see your Markdown changes reflected in the browser.
+- **Project Awareness**: Multi-file support with workspace/project awareness. Switch
+  between markdown files in your editor and the preview updates automatically.
+  _Note: Automatic preview updates on editor focus change require the editor to
+  send custom LSP notifications. This works in Neovim and Emacs (see configuration
+  examples below), but is not currently supported in Helix as it cannot send
+  custom events to LSP servers._
+- **Interactive Link Navigation**: Click on markdown links in the preview to open
+  the linked file in your editor. Navigate your documentation seamlessly between
+  browser and editor.
+- **Flexible Preview Modes**:
+  - **Single-page mode (default)**: All files update in the same browser window,
+    perfect for focused editing.
+  - **Multi-tab mode** (`--tabs`): Each file opens in its own browser tab for
+    side-by-side viewing.
 
 ### Built with Goldmark
 
@@ -210,12 +224,13 @@ The following options can be used when starting `mpls`:
 | `--browser`              | Specify web browser to use for the preview. **(1)**                              |
 | `--code-style`           | Sets the style for syntax highlighting in fenced code blocks. **(2)**            |
 | `--theme`                | Set the preview theme (light, dark, or any of the provided themes). **(3)**      |
+| `--tabs`                 | Enable multi-tab preview mode. Each file opens in its own browser tab. **(4)**   |
 | `--list-themes`          | List all available themes and exit                                               |
 | `--dark-mode`            | **DEPRECATED:** Use `--theme dark` instead. Will be removed in a future release. |
 | `--enable-emoji`         | Enable emoji support                                                             |
 | `--enable-footnotes`     | Enable footnotes                                                                 |
 | `--enable-wikilinks`     | Enable rendering of [[wiki]] -style links                                        |
-| `--full-sync`            | Sync the entire document for every change being made. **(4)**                    |
+| `--full-sync`            | Sync the entire document for every change being made. **(5)**                    |
 | `--no-auto`              | Don't open preview automatically                                                 |
 | `--plantuml-disable-tls` | Disable encryption on requests to the PlantUML server                            |
 | `--plantuml-server`      | Specify the host for the PlantUML server                                         |
@@ -239,7 +254,11 @@ The following options can be used when starting `mpls`:
    `solarized-dark`, `solarized-light`, `nord`, `dracula`, `rose-pine`,
    `ayu-dark`, `ayu-light`, `everforest-dark`, and more. Use `--list-themes` to
    see all available themes. Default theme is `light`.
-4. Has a small impact on performance, but makes sure that commands like `reflow`
+4. By default, all files update in the same browser window (single-page mode).
+   With `--tabs`, each file opens in its own browser tab with a unique URL. In
+   single-page mode, link clicks update the preview; in multi-tab mode, they
+   open new tabs.
+5. Has a small impact on performance, but makes sure that commands like `reflow`
    in Helix, does not impact the accuracy of the preview.
 
 ## Configuration examples
