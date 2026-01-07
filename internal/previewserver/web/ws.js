@@ -219,7 +219,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Handle closeDocument message
       if (response.Type === "closeDocument") {
-        // Only close window in multi-tab mode
+        // Close window if it's the last document (in single-page mode)
+        if (response.IsLastDocument) {
+          console.log("Last document closed, closing preview");
+          window.close();
+          return;
+        }
+
+        // Close window in multi-tab mode if it matches this tab
         if (
           enableTabsMode &&
           response.DocumentURI === window.location.pathname

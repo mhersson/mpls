@@ -51,9 +51,9 @@ func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, 
 
 	// Extract workspace root
 	if len(params.WorkspaceFolders) > 0 {
-		workspaceRoot = parser.NormalizePath(string(params.WorkspaceFolders[0].URI))
+		workspaceRoot = parser.NormalizePath(params.WorkspaceFolders[0].URI)
 	} else if params.RootURI != nil {
-		workspaceRoot = parser.NormalizePath(string(*params.RootURI))
+		workspaceRoot = parser.NormalizePath(*params.RootURI)
 	} else if params.RootPath != nil {
 		workspaceRoot = *params.RootPath
 	}
@@ -118,9 +118,7 @@ func startDocumentRequestHandler(ctx *glsp.Context) {
 			case req := <-previewserver.LSPRequestChan:
 				// Convert workspace-relative path to file:// URI
 				relativePath := req.URI
-				if strings.HasPrefix(relativePath, "/") {
-					relativePath = strings.TrimPrefix(relativePath, "/")
-				}
+				relativePath = strings.TrimPrefix(relativePath, "/")
 
 				// Construct absolute file path
 				fileURI := documentRegistry.GetFileURI("/" + relativePath)

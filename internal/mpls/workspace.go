@@ -22,47 +22,63 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 
 		var previewURL string
 
-		if previewserver.EnableTabs && doc != nil {
-			// MULTI-TAB MODE: Open at file-specific URL
-			relativePath := documentRegistry.GetRelativePath(doc.URI)
-			if relativePath != "" {
-				previewURL = fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
-			} else {
-				previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
+		// Check if browser is already open in single-page mode
+		clientsExist := len(previewserver.GetClients()) > 0
+
+		if !previewserver.EnableTabs && clientsExist {
+			// SINGLE-PAGE MODE with existing browser: Just update via WebSocket
+			_ = protocol.Trace(ctx, protocol.MessageTypeInfo,
+				log("WorkspaceExecuteCommand - Browser already open, updating via WebSocket"))
+
+			documentRegistry.MarkFirstPreviewShown()
+
+			if doc != nil && doc.HTML != "" {
+				previewServer.UpdateWithURI(filepath.Base(doc.URI), "", doc.HTML, doc.Meta)
 			}
 		} else {
-			// SINGLE-PAGE MODE: Always open at root
-			previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
-		}
-
-		// Open browser
-		err := previewserver.Openbrowser(previewURL, previewserver.Browser)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := previewserver.WaitForClients(10 * time.Second); err != nil {
-			return nil, err
-		}
-
-		// Mark first preview shown for --no-auto behavior
-		documentRegistry.MarkFirstPreviewShown()
-
-		// If there are documents in registry, update preview with the most recent one
-		// This ensures preview shows content when opened with --no-auto
-		if doc != nil && doc.HTML != "" {
-			documentURI := ""
-
-			if previewserver.EnableTabs {
+			// Open new browser window/tab
+			if previewserver.EnableTabs && doc != nil {
+				// MULTI-TAB MODE: Open at file-specific URL
 				relativePath := documentRegistry.GetRelativePath(doc.URI)
-				if relativePath == "" {
-					relativePath = "/"
+				if relativePath != "" {
+					previewURL = fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
+				} else {
+					previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
 				}
-
-				documentURI = relativePath
+			} else {
+				// SINGLE-PAGE MODE: Always open at root
+				previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
 			}
 
-			previewServer.UpdateWithURI(filepath.Base(doc.URI), documentURI, doc.HTML, doc.Meta)
+			// Open browser
+			err := previewserver.Openbrowser(previewURL, previewserver.Browser)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := previewserver.WaitForClients(10 * time.Second); err != nil {
+				return nil, err
+			}
+
+			// Mark first preview shown for --no-auto behavior
+			documentRegistry.MarkFirstPreviewShown()
+
+			// If there are documents in registry, update preview with the most recent one
+			// This ensures preview shows content when opened with --no-auto
+			if doc != nil && doc.HTML != "" {
+				documentURI := ""
+
+				if previewserver.EnableTabs {
+					relativePath := documentRegistry.GetRelativePath(doc.URI)
+					if relativePath == "" {
+						relativePath = "/"
+					}
+
+					documentURI = relativePath
+				}
+
+				previewServer.UpdateWithURI(filepath.Base(doc.URI), documentURI, doc.HTML, doc.Meta)
+			}
 		}
 	default:
 		return nil, errors.New("unknown command")

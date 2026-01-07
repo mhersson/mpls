@@ -244,14 +244,20 @@ func TextDocumentDidClose(ctx *glsp.Context, params *protocol.DidCloseTextDocume
 
 	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("TextDocumentDidClose: "+uri))
 
+	// Remove document from registry
+	documentRegistry.Remove(uri)
+
 	// Get relative path for the closed document
 	relativePath := documentRegistry.GetRelativePath(uri)
 	if relativePath == "" {
 		relativePath = "/"
 	}
 
+	// Check if this was the last document
+	isLastDocument := documentRegistry.IsEmpty()
+
 	// Send close message to browser
-	previewServer.CloseDocument(relativePath)
+	previewServer.CloseDocument(relativePath, isLastDocument)
 
 	return nil
 }

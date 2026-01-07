@@ -413,13 +413,14 @@ func (s *Server) Update(filename, newContent string, meta map[string]any) {
 }
 
 // CloseDocument sends a close message to clients viewing the specified document.
-func (s *Server) CloseDocument(documentURI string) {
+func (s *Server) CloseDocument(documentURI string, isLastDocument bool) {
 	type CloseEvent struct {
-		Type        string
-		DocumentURI string
+		Type           string
+		DocumentURI    string
+		IsLastDocument bool
 	}
 
-	e := CloseEvent{Type: "closeDocument", DocumentURI: documentURI}
+	e := CloseEvent{Type: "closeDocument", DocumentURI: documentURI, IsLastDocument: isLastDocument}
 
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
@@ -532,7 +533,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		time.Sleep(100 * time.Millisecond) // Brief delay to ensure WebSocket is ready
 
-		configMsg := map[string]interface{}{
+		configMsg := map[string]any{
 			"Type":       "config",
 			"EnableTabs": EnableTabs,
 		}

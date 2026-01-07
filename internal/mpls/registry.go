@@ -156,3 +156,17 @@ func (r *DocumentRegistry) GetMostRecentDocument() *DocumentState {
 
 	return mostRecent
 }
+
+func (r *DocumentRegistry) Remove(uri string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	delete(r.docs, uri)
+}
+
+func (r *DocumentRegistry) IsEmpty() bool {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	return len(r.docs) == 0
+}
