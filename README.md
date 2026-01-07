@@ -21,8 +21,9 @@ have built-in Markdown rendering, `mpls` bridges the gap by providing a live
 preview feature that works alongside these editors. Additionally, `mpls` is
 compatible with any editor that supports the Language Server Protocol (LSP),
 making it a versatile tool for Markdown editing across various platforms. For
-users of Visual Studio Code, there is also a dedicated extension available at
-[mpls-vscode-client](https://github.com/mhersson/mpls-vscode-client),
+users of Visual Studio Code and Zed, there are also dedicated extensions
+available at [mpls-vscode-client](https://github.com/mhersson/mpls-vscode-client)
+and [mpls for Zed](https://zed.dev/extensions/mpls),
 
 ![demo](screenshots/demo.gif)
 
