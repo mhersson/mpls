@@ -14,34 +14,57 @@ import (
 func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFocusParams) error {
 	var err error
 
-	plantumls = []plantuml.Plantuml{}
+	uri := params.URI
+	filename := filepath.Base(uri)
 
-	if currentURI == params.URI {
+	_ = protocol316.Trace(ctx, protocol316.MessageTypeInfo, log("MplsEditorDidChangedFocus: "+uri))
+
+	// Get document state from registry
+	docState, exists := documentRegistry.Get(uri)
+	if !exists {
+		// Document not in registry, load from disk
+		content, err := loadDocument(uri)
+		if err != nil {
+			return err
+		}
+
+		docState = &DocumentState{
+			URI:       uri,
+			Content:   content,
+			PlantUMLs: []plantuml.Plantuml{},
+		}
+		documentRegistry.Register(uri, docState)
+	}
+
+	// In single-page mode, always update regardless of --no-auto
+	// In multi-tab mode, respect ShouldAutoOpen
+	if previewserver.EnableTabs && !documentRegistry.ShouldAutoOpen() {
 		return nil
 	}
 
-	_ = protocol316.Trace(ctx, protocol316.MessageTypeInfo, log("MplsEditorDidChangedFocus: "+params.URI))
+	html, meta := parser.HTML(docState.Content, uri)
 
-	if !previewserver.OpenBrowserOnStartup && content == "" {
-		return nil
-	}
-
-	content, err = loadDocument(params.URI)
-	if err != nil {
-		return err
-	}
-
-	filename = filepath.Base(params.URI)
-	currentURI = params.URI
-
-	html, meta := parser.HTML(content, currentURI)
-
-	html, err = insertPlantumlDiagram(html, true)
+	html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, true, docState.PlantUMLs)
 	if err != nil {
 		_ = protocol316.Trace(ctx, protocol316.MessageTypeWarning, log("MplsEditorDidChangeFocus - plantuml: "+err.Error()))
 	}
 
-	previewServer.Update(filename, html, meta)
+	docState.HTML = html
+	docState.Meta = meta
+
+	// Get relative path for URI filtering
+	relativePath := documentRegistry.GetRelativePath(uri)
+	if relativePath == "" {
+		relativePath = "/"
+	}
+
+	// Set documentURI based on mode
+	documentURI := ""
+	if previewserver.EnableTabs {
+		documentURI = relativePath
+	}
+
+	previewServer.UpdateWithURI(filename, documentURI, html, meta)
 
 	return nil
 }

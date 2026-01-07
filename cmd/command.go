@@ -14,6 +14,7 @@ import (
 
 var (
 	noAuto     bool
+	enableTabs bool
 	listThemes bool
 	darkMode   bool
 	Version    = "dev"
@@ -46,6 +47,9 @@ var command = &cobra.Command{
 				parser.CodeHighlightingStyle = chromaStyle
 			}
 		}
+
+		// Set preview mode
+		previewserver.EnableTabs = enableTabs
 
 		cmd.Printf("mpls %s - press Ctrl+D to quit.\n", cmd.Version)
 		previewserver.OpenBrowserOnStartup = !noAuto
@@ -102,6 +106,7 @@ func init() {
 	command.Flags().StringVar(&plantuml.BasePath, "plantuml-path", "plantuml", "Specify the base path for the plantuml server")
 	command.Flags().StringVar(&plantuml.Server, "plantuml-server", "www.plantuml.com", "Specify the host for the plantuml server")
 	command.Flags().BoolVar(&plantuml.DisableTLS, "plantuml-disable-tls", false, "Disable encryption on requests to the plantuml server")
+	command.Flags().BoolVar(&enableTabs, "tabs", false, "Enable multi-tab preview mode (default: single-page)")
 
 	// Mark deprecated flags
 	command.Flags().MarkDeprecated("dark-mode", "use --theme dark instead")

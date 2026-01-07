@@ -23,9 +23,10 @@ import (
 const ScrollAnchor = "mpls-scroll-anchor"
 
 var (
-	oldDocContent         map[string]string
+	oldDocContentByURI    map[string]map[string]string // URI -> content map
 	CodeHighlightingStyle string
 	EnableWikiLinks       bool
+	WorkspaceRoot         string
 
 	EnableFootnotes bool
 	EnableEmoji     bool
@@ -48,11 +49,21 @@ func NormalizePath(uri string) string {
 	return f
 }
 
-type ScrollIDTransformer struct{}
+type ScrollIDTransformer struct {
+	currentURI string
+}
 
 func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
 	currentDocContent := make(map[string]string)
 	changedNodes := make(map[ast.Node]bool)
+
+	// Initialize the map if needed
+	if oldDocContentByURI == nil {
+		oldDocContentByURI = make(map[string]map[string]string)
+	}
+
+	// Get the old content for this specific document
+	oldDocContent := oldDocContentByURI[t.currentURI]
 
 	var walk func(ast.Node, string)
 	walk = func(n ast.Node, path string) {
@@ -100,7 +111,7 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 	walk(doc, "")
 
 	if len(changedNodes) == 0 {
-		oldDocContent = currentDocContent
+		oldDocContentByURI[t.currentURI] = currentDocContent
 
 		return
 	}
@@ -143,7 +154,98 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 		target.SetAttribute([]byte("id"), []byte(ScrollAnchor))
 	}
 
-	oldDocContent = currentDocContent
+	oldDocContentByURI[t.currentURI] = currentDocContent
+}
+
+type LinkResolverTransformer struct {
+	currentURI string
+}
+
+func (t *LinkResolverTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+
+		if link, ok := n.(*ast.Link); ok {
+			dest := string(link.Destination)
+
+			// Skip external links
+			if strings.HasPrefix(dest, "http://") || strings.HasPrefix(dest, "https://") {
+				return ast.WalkContinue, nil
+			}
+
+			// Skip anchor-only links
+			if strings.HasPrefix(dest, "#") {
+				return ast.WalkContinue, nil
+			}
+
+			// Resolve relative link
+			resolvedPath := t.resolveRelativeLink(dest)
+			if resolvedPath != "" {
+				// Add data attributes for JavaScript to intercept
+				link.SetAttribute([]byte("data-mpls-internal"), []byte("true"))
+				link.SetAttribute([]byte("data-mpls-target"), []byte(resolvedPath))
+			}
+		}
+
+		return ast.WalkContinue, nil
+	})
+}
+
+func (t *LinkResolverTransformer) resolveRelativeLink(dest string) string {
+	// If no workspace root, can't resolve
+	if WorkspaceRoot == "" {
+		return ""
+	}
+
+	// Split anchor from path
+	path := dest
+	anchor := ""
+
+	if idx := strings.Index(dest, "#"); idx != -1 {
+		path = dest[:idx]
+		anchor = dest[idx:]
+	}
+
+	// If path is empty (anchor-only), return empty
+	if path == "" {
+		return ""
+	}
+
+	// Get current file's directory
+	currentFilePath := NormalizePath(t.currentURI)
+	currentDir := filepath.Dir(currentFilePath)
+
+	// Resolve relative to current file
+	absolutePath := filepath.Join(currentDir, path)
+	absolutePath = filepath.Clean(absolutePath)
+
+	// Convert to workspace-relative path
+	normalizedRoot := NormalizePath("file://" + WorkspaceRoot)
+	normalizedPath := NormalizePath("file://" + absolutePath)
+
+	// Check if path is within workspace
+	if !strings.HasPrefix(normalizedPath, normalizedRoot) {
+		return ""
+	}
+
+	relativePath, err := filepath.Rel(normalizedRoot, normalizedPath)
+	if err != nil {
+		return ""
+	}
+
+	// Ensure it starts with /
+	if !strings.HasPrefix(relativePath, "/") {
+		relativePath = "/" + relativePath
+	}
+
+	// Add anchor back if present
+	if anchor != "" {
+		relativePath += anchor
+	}
+
+	return relativePath
 }
 
 func HTML(document, uri string) (string, map[string]any) {
@@ -172,7 +274,8 @@ func HTML(document, uri string) (string, map[string]any) {
 			html.WithUnsafe()),
 		goldmark.WithParserOptions(
 			parser.WithASTTransformers(
-				util.Prioritized(&ScrollIDTransformer{}, 100),
+				util.Prioritized(&ScrollIDTransformer{currentURI: uri}, 100),
+				util.Prioritized(&LinkResolverTransformer{currentURI: uri}, 99),
 			),
 		),
 	)

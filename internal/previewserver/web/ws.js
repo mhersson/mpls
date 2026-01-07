@@ -1,24 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
   const ws = new WebSocket("ws://localhost:%d/ws");
 
-  const DEBOUNCE_DELAY = 1000;
   const MERMAID_RENDER_DELAY = 100;
   const SCROLL_OFFSET = 150;
   const SCROLL_RETRY_DELAY = 50;
   const MAX_SCROLL_RETRIES = 10;
 
-  let debounceTimeout;
   let isReloading = false;
   let lastScrollTarget = null;
+  let enableTabsMode = false; // Global variable for preview mode
 
   // Utility functions
-  function debounce(func, delay) {
-    return function (...args) {
-      clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(() => func.apply(this, args), delay);
-    };
-  }
-
   function $(id) {
     return document.getElementById(id);
   }
@@ -28,31 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Content management
-  const saveContentToLocalStorage = debounce((renderedHtml) => {
-    try {
-      localStorage.setItem("savedContent", renderedHtml);
-    } catch (error) {
-      console.warn("Failed to save to localStorage:", error);
-    }
-  }, DEBOUNCE_DELAY);
-
   function updateContent(renderedHtml) {
     const contentElement = $("content");
     if (contentElement) {
       contentElement.innerHTML = renderedHtml;
-    }
-  }
-
-  function loadSavedContent() {
-    try {
-      const savedContent = localStorage.getItem("savedContent");
-      if (savedContent) {
-        updateContent(savedContent);
-        // Render mermaid and initialize modals after loading saved content
-        renderMermaidAndScroll();
-      }
-    } catch (error) {
-      console.warn("Failed to load from localStorage:", error);
     }
   }
 
@@ -174,7 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Improved scroll functionality
-  function scrollToEdit(retryCount = 0) {
+  function scrollToEdit(retryCount = 0, fileChanged = false) {
     const disableScrolling = $("disable-scrolling");
     if (disableScrolling?.checked) {
       return;
@@ -183,6 +154,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const targetElement = $("mpls-scroll-anchor");
     if (!targetElement) {
       lastScrollTarget = null;
+      // If file changed and no anchor, scroll to top
+      if (fileChanged && window.scrollY > 0) {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      }
       return;
     }
 
@@ -190,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const renderingElements = $$('[data-rendering="true"]');
     if (renderingElements.length > 0 && retryCount < MAX_SCROLL_RETRIES) {
       // Retry after a short delay
-      setTimeout(() => scrollToEdit(retryCount + 1), SCROLL_RETRY_DELAY);
+      setTimeout(() => scrollToEdit(retryCount + 1, fileChanged), SCROLL_RETRY_DELAY);
       return;
     }
 
@@ -211,7 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Combined render and scroll function
-  async function renderMermaidAndScroll() {
+  async function renderMermaidAndScroll(fileChanged = false) {
     // First render mermaid
     await renderMermaid();
 
@@ -221,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Finally scroll to edit position
     // Use setTimeout to ensure DOM has settled
     setTimeout(() => {
-      scrollToEdit();
+      scrollToEdit(0, fileChanged);
     }, MERMAID_RENDER_DELAY);
   }
 
@@ -229,7 +207,50 @@ document.addEventListener("DOMContentLoaded", () => {
   async function handleWebSocketMessage(event) {
     try {
       const response = JSON.parse(event.data);
-      const { HTML: renderedHtml, Title: responseTitle, Meta: meta } = response;
+
+      // Handle config message
+      if (response.Type === "config") {
+        enableTabsMode = response.EnableTabs || false;
+        console.log(
+          `Preview mode: ${enableTabsMode ? "multi-tab" : "single-page"}`,
+        );
+        return;
+      }
+
+      // Handle closeDocument message
+      if (response.Type === "closeDocument") {
+        // Close window if it's the last document (in single-page mode)
+        if (response.IsLastDocument) {
+          console.log("Last document closed, closing preview");
+          window.close();
+          return;
+        }
+
+        // Close window in multi-tab mode if it matches this tab
+        if (
+          enableTabsMode &&
+          response.DocumentURI === window.location.pathname
+        ) {
+          console.log(`Closing preview for ${response.DocumentURI}`);
+          window.close();
+        }
+        return;
+      }
+
+      const {
+        HTML: renderedHtml,
+        Title: responseTitle,
+        Meta: meta,
+        DocumentURI: documentURI,
+      } = response;
+
+      // If DocumentURI is provided, check if it matches current page
+      if (documentURI && documentURI !== window.location.pathname) {
+        console.log(
+          `Ignoring update for ${documentURI}, current page is ${window.location.pathname}`,
+        );
+        return;
+      }
 
       const title = `mpls - ${responseTitle}`;
       const pin = $("pin");
@@ -241,7 +262,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Update title if changed
+      let titleChanged = false;
       if (title !== document.title) {
+        titleChanged = true;
         const headerSummary = $("header-summary");
         if (headerSummary) {
           headerSummary.innerText = responseTitle;
@@ -257,10 +280,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Update content
       updateContent(renderedHtml);
-      saveContentToLocalStorage(renderedHtml);
 
       // Render and scroll
-      await renderMermaidAndScroll();
+      await renderMermaidAndScroll(titleChanged);
     } catch (error) {
       console.error("Failed to process WebSocket message:", error);
     }
@@ -275,10 +297,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleWebSocketOpen() {
     console.log("WebSocket connection established");
+    setupLinkInterception();
   }
 
   function handleWebSocketError(event) {
     console.error("WebSocket error:", event);
+  }
+
+  // Link interception for multi-file navigation
+  function setupLinkInterception() {
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest("a[href]");
+      if (!link) return;
+
+      const href = link.getAttribute("href");
+      const isInternal = link.hasAttribute("data-mpls-internal");
+      const target = link.getAttribute("data-mpls-target");
+
+      // Anchor-only links - let browser handle
+      if (href.startsWith("#")) {
+        return;
+      }
+
+      // External links - let browser handle
+      if (href.startsWith("http://") || href.startsWith("https://")) {
+        return;
+      }
+
+      // Internal markdown links
+      if (isInternal && target) {
+        event.preventDefault();
+
+        if (enableTabsMode) {
+          // MULTI-TAB MODE: Send message to open in editor (browser tab opens via TextDocumentDidOpen)
+          ws.send(
+            JSON.stringify({
+              type: "openDocument",
+              uri: target,
+              takeFocus: true,
+            }),
+          );
+        } else {
+          // SINGLE-PAGE MODE: Send message to open in editor + update preview
+          ws.send(
+            JSON.stringify({
+              type: "openDocument",
+              uri: target,
+              takeFocus: true,
+              updatePreview: true,
+            }),
+          );
+        }
+      }
+    });
   }
 
   // Intersection Observer for lazy loading (optional enhancement)
@@ -317,9 +388,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ws.addEventListener("error", handleWebSocketError);
 
   // Window event listeners
-  window.addEventListener("load", () => {
-    loadSavedContent();
+  window.addEventListener("load", async () => {
     setupLazyLoading();
+    // Render mermaid diagrams that are already in the HTML from HTTP GET
+    await renderMermaidAndScroll();
   });
 
   window.addEventListener("beforeunload", () => {
