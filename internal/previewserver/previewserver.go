@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io/fs"
 	"math/rand"
 	"net/http"
@@ -308,10 +309,10 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 
 	// Render HTML
 	fileURI := "file://" + absolutePath
-	html, meta := parser.HTML(string(content), fileURI)
+	renderedHTML, meta := parser.HTML(string(content), fileURI)
 
 	// Process PlantUML diagrams
-	html, _, err = plantuml.InsertPlantumlDiagram(html, true, []plantuml.Plantuml{})
+	renderedHTML, _, err = plantuml.InsertPlantumlDiagram(renderedHTML, true, []plantuml.Plantuml{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s error processing PlantUML: %v\n", logTime(), err)
 		// Continue without PlantUML if there's an error
@@ -327,7 +328,8 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	if len(metaMap) > 0 {
 		metaHTML = "<table>"
 		for key, value := range metaMap {
-			metaHTML += fmt.Sprintf("<tr><td>%s</td><td>%v</td></tr>", key, value)
+			metaHTML += fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>",
+				html.EscapeString(key), html.EscapeString(fmt.Sprintf("%v", value)))
 		}
 
 		metaHTML += "</table>"
@@ -336,7 +338,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	// Create full HTML page
 	fullHTML := s.InitialContent
 	fullHTML = strings.Replace(fullHTML, `<div class="preview-content" id="content"></div>`,
-		fmt.Sprintf(`<div class="preview-content" id="content">%s</div>`, html), 1)
+		fmt.Sprintf(`<div class="preview-content" id="content">%s</div>`, renderedHTML), 1)
 	fullHTML = strings.Replace(fullHTML, `<div id="header-meta"></div>`,
 		fmt.Sprintf(`<div id="header-meta">%s</div>`, metaHTML), 1)
 	fullHTML = strings.Replace(fullHTML, `<summary id="header-summary"></summary>`,
@@ -529,17 +531,16 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	clients[conn] = true
 	clientsMutex.Unlock()
 
-	// Send initial config to client
-	go func() {
-		time.Sleep(100 * time.Millisecond) // Brief delay to ensure WebSocket is ready
-
-		configMsg := map[string]any{
-			"Type":       "config",
-			"EnableTabs": EnableTabs,
+	// Send initial config synchronously with error handling
+	configMsg := map[string]any{
+		"Type":       "config",
+		"EnableTabs": EnableTabs,
+	}
+	if msgJSON, err := json.Marshal(configMsg); err == nil {
+		if err := conn.WriteMessage(websocket.TextMessage, msgJSON); err != nil {
+			fmt.Fprintf(os.Stderr, "%s error sending config: %v\n", logTime(), err)
 		}
-		msgJSON, _ := json.Marshal(configMsg)
-		conn.WriteMessage(websocket.TextMessage, msgJSON)
-	}()
+	}
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -662,16 +663,17 @@ func convertMetaToHTMLTable(meta map[string]any) string {
 
 	sort.Strings(keys)
 
-	var html strings.Builder
+	var htmlBuilder strings.Builder
 
-	html.WriteString("<table>")
-	html.WriteString("<tr><th colspan='2'>Meta</th></tr>")
+	htmlBuilder.WriteString("<table>")
+	htmlBuilder.WriteString("<tr><th colspan='2'>Meta</th></tr>")
 
 	for _, k := range keys {
-		fmt.Fprintf(&html, "<tr><td>%s</td><td>%v</td></tr>", k, meta[k])
+		fmt.Fprintf(&htmlBuilder, "<tr><td>%s</td><td>%s</td></tr>",
+			html.EscapeString(k), html.EscapeString(fmt.Sprintf("%v", meta[k])))
 	}
 
-	html.WriteString("</table>")
+	htmlBuilder.WriteString("</table>")
 
-	return html.String()
+	return htmlBuilder.String()
 }

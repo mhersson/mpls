@@ -42,6 +42,10 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 		return nil
 	}
 
+	// Lock document state for mutation
+	docState.Lock()
+	defer docState.Unlock()
+
 	html, meta := parser.HTML(docState.Content, uri)
 
 	html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, true, docState.PlantUMLs)

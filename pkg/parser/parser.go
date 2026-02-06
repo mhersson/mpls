@@ -3,6 +3,8 @@ package parser
 import (
 	"bytes"
 	"fmt"
+	"html"
+	"net/url"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -14,7 +16,7 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer/html"
+	goldmarkhtml "github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 	"go.abhg.dev/goldmark/wikilink"
@@ -41,12 +43,18 @@ func NormalizePath(uri string) string {
 
 	if runtime.GOOS == "windows" {
 		f = strings.TrimPrefix(uri, "file:///")
-		f = filepath.FromSlash(f)
-		f = strings.Replace(f, "%3A", ":", 1)
-		f = strings.ReplaceAll(f, "%20", " ")
 	}
 
-	return f
+	decoded, err := url.PathUnescape(f)
+	if err != nil {
+		decoded = f
+	}
+
+	if runtime.GOOS == "windows" {
+		decoded = filepath.FromSlash(decoded)
+	}
+
+	return decoded
 }
 
 type ScrollIDTransformer struct {
@@ -161,6 +169,12 @@ type LinkResolverTransformer struct {
 	currentURI string
 }
 
+func CleanupDocumentContent(uri string) {
+	if oldDocContentByURI != nil {
+		delete(oldDocContentByURI, uri)
+	}
+}
+
 func (t *LinkResolverTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
@@ -271,7 +285,7 @@ func HTML(document, uri string) (string, map[string]any) {
 		goldmark.WithExtensions(extensions...),
 		goldmark.WithRendererOptions(
 			img64.WithPathResolver(img64.ParentLocalPathResolver(dir)),
-			html.WithUnsafe()),
+			goldmarkhtml.WithUnsafe()),
 		goldmark.WithParserOptions(
 			parser.WithASTTransformers(
 				util.Prioritized(&ScrollIDTransformer{currentURI: uri}, 100),
@@ -284,7 +298,12 @@ func HTML(document, uri string) (string, map[string]any) {
 
 	ctx := parser.NewContext()
 	if err := markdown.Convert(source, &buf, parser.WithContext(ctx)); err != nil {
-		panic(err)
+		errorHTML := fmt.Sprintf(
+			`<div class="mpls-error"><strong>Markdown parsing error:</strong><pre>%s</pre></div>`,
+			html.EscapeString(err.Error()),
+		)
+
+		return errorHTML, nil
 	}
 
 	return buf.String(), meta.Get(ctx)

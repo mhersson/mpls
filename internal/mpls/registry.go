@@ -18,7 +18,13 @@ type DocumentState struct {
 	Meta         map[string]any
 	PlantUMLs    []plantuml.Plantuml
 	LastModified time.Time
+	mutex        sync.RWMutex
 }
+
+func (d *DocumentState) Lock()    { d.mutex.Lock() }
+func (d *DocumentState) Unlock()  { d.mutex.Unlock() }
+func (d *DocumentState) RLock()   { d.mutex.RLock() }
+func (d *DocumentState) RUnlock() { d.mutex.RUnlock() }
 
 type DocumentRegistry struct {
 	docs              map[string]*DocumentState

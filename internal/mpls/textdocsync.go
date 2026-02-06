@@ -125,6 +125,10 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 			log("TextDocumentUriDidChange - loaded new document: "+uri))
 	}
 
+	// Lock document state for mutation
+	docState.Lock()
+	defer docState.Unlock()
+
 	// Get relative path for URI filtering
 	relativePath := documentRegistry.GetRelativePath(uri)
 	if relativePath == "" {
@@ -204,6 +208,10 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 		}
 	}
 
+	// Lock document state for mutation
+	docState.Lock()
+	defer docState.Unlock()
+
 	docState.Content = content
 
 	html, meta := parser.HTML(content, uri)
@@ -244,19 +252,22 @@ func TextDocumentDidClose(ctx *glsp.Context, params *protocol.DidCloseTextDocume
 
 	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("TextDocumentDidClose: "+uri))
 
-	// Remove document from registry
-	documentRegistry.Remove(uri)
-
-	// Get relative path for the closed document
+	// 1. Get relative path BEFORE removal
 	relativePath := documentRegistry.GetRelativePath(uri)
 	if relativePath == "" {
 		relativePath = "/"
 	}
 
-	// Check if this was the last document
+	// 2. Clean up parser cache
+	parser.CleanupDocumentContent(uri)
+
+	// 3. Remove from registry
+	documentRegistry.Remove(uri)
+
+	// 4. Check if last document
 	isLastDocument := documentRegistry.IsEmpty()
 
-	// Send close message to browser
+	// 5. Send close message to browser
 	previewServer.CloseDocument(relativePath, isLastDocument)
 
 	return nil
