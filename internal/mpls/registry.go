@@ -73,7 +73,7 @@ func (r *DocumentRegistry) Get(uri string) (*DocumentState, bool) {
 
 func (r *DocumentRegistry) GetRelativePath(uri string) string {
 	normalizedURI := parser.NormalizePath(uri)
-	normalizedRoot := r.workspaceRoot
+	normalizedRoot := parser.NormalizePath(r.workspaceRoot)
 
 	if !strings.HasPrefix(normalizedURI, normalizedRoot) {
 		return ""

@@ -55,7 +55,7 @@ func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, 
 	} else if params.RootURI != nil {
 		workspaceRoot = parser.NormalizePath(*params.RootURI)
 	} else if params.RootPath != nil {
-		workspaceRoot = *params.RootPath
+		workspaceRoot = parser.NormalizePath(*params.RootPath)
 	}
 
 	// Initialize document registry with workspace root

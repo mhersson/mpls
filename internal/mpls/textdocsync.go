@@ -71,6 +71,14 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 		if err != nil {
 			_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("TextDocumentDidOpen - failed to open browser: "+err.Error()))
 		}
+
+		// For external files (outside workspace), send WebSocket update
+		// since HTTP serving cannot resolve the file path
+		if relativePath == "/" {
+			if err := previewserver.WaitForClients(2 * time.Second); err == nil {
+				previewServer.UpdateWithURI(filepath.Base(uri), "", html, meta)
+			}
+		}
 	} else {
 		// SINGLE-PAGE MODE: Update existing preview or open at root
 		if len(previewserver.GetClients()) == 0 {
