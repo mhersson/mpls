@@ -52,7 +52,9 @@ var command = &cobra.Command{
 		previewserver.EnableTabs = enableTabs
 
 		cmd.Printf("mpls %s - press Ctrl+D to quit.\n", cmd.Version)
+
 		previewserver.OpenBrowserOnStartup = !noAuto
+
 		mpls.Run()
 	},
 }
@@ -109,5 +111,5 @@ func init() {
 	command.Flags().BoolVar(&enableTabs, "tabs", false, "Enable multi-tab preview mode (default: single-page)")
 
 	// Mark deprecated flags
-	command.Flags().MarkDeprecated("dark-mode", "use --theme dark instead")
+	_ = command.Flags().MarkDeprecated("dark-mode", "use --theme dark instead")
 }

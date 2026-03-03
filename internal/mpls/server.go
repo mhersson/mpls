@@ -47,14 +47,16 @@ func Run() {
 
 func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, error) {
 	protocol316.SetTraceValue("message")
+
 	_ = protocol316.Trace(context, protocol316.MessageTypeInfo, log("Initializing "+lsName))
 
 	// Extract workspace root
-	if len(params.WorkspaceFolders) > 0 {
+	switch {
+	case len(params.WorkspaceFolders) > 0:
 		workspaceRoot = parser.NormalizePath(params.WorkspaceFolders[0].URI)
-	} else if params.RootURI != nil {
+	case params.RootURI != nil:
 		workspaceRoot = parser.NormalizePath(*params.RootURI)
-	} else if params.RootPath != nil {
+	case params.RootPath != nil:
 		workspaceRoot = parser.NormalizePath(*params.RootPath)
 	}
 
@@ -125,7 +127,7 @@ func startDocumentRequestHandler(ctx *glsp.Context) {
 
 				// Create ShowDocumentParams
 				params := protocol316.ShowDocumentParams{
-					URI:       protocol316.URI(fileURI),
+					URI:       fileURI,
 					External:  boolPtr(false),
 					TakeFocus: boolPtr(req.TakeFocus),
 				}

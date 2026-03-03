@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,13 @@ var (
 )
 
 var enc *base64.Encoding
+
+// Diagram cache for avoiding repeated HTTP requests.
+var (
+	diagramCache      = make(map[string]string) // encodedUML -> diagram HTML
+	diagramCacheMutex sync.RWMutex
+	maxCacheSize      = 100 // Max cached diagrams
+)
 
 func init() {
 	enc = base64.NewEncoding(plantumlMap)
@@ -38,7 +46,7 @@ func encode(text string) string {
 
 	w, _ := flate.NewWriter(b, flate.BestCompression)
 	_, _ = w.Write([]byte(text))
-	w.Close()
+	_ = w.Close()
 
 	return enc.EncodeToString(b.Bytes())
 }
@@ -63,7 +71,7 @@ func call(payload string) ([]byte, error) {
 
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:gosec // Intentional: PlantUML server URL is user-configurable
 	if err != nil {
 		return nil, fmt.Errorf("failed get diagram: %w", err)
 	}
@@ -79,17 +87,51 @@ func call(payload string) ([]byte, error) {
 }
 
 func getDiagram(encodedUML string) (string, error) {
+	// Check cache first
+	diagramCacheMutex.RLock()
+
+	if cached, ok := diagramCache[encodedUML]; ok {
+		diagramCacheMutex.RUnlock()
+
+		return cached, nil
+	}
+
+	diagramCacheMutex.RUnlock()
+
+	// Cache miss - make HTTP request
 	svg, err := call(encodedUML)
+	if err != nil {
+		return "", err
+	}
 
 	var buf bytes.Buffer
 
 	buf.Write([]byte(`<img src="data:image/png;base64,`))
 	enc := base64.NewEncoder(base64.StdEncoding, &buf)
 	_, _ = enc.Write(svg)
-	enc.Close()
+	_ = enc.Close()
+
 	buf.Write([]byte(`" alt="plantuml-diagram">`))
 
-	return buf.String(), err
+	result := buf.String()
+
+	// Store in cache
+	diagramCacheMutex.Lock()
+	if len(diagramCache) >= maxCacheSize {
+		// Simple eviction: clear half the cache
+		for k := range diagramCache {
+			delete(diagramCache, k)
+
+			if len(diagramCache) < maxCacheSize/2 {
+				break
+			}
+		}
+	}
+
+	diagramCache[encodedUML] = result
+	diagramCacheMutex.Unlock()
+
+	return result, nil
 }
 
 func Encode(uml string) string {
@@ -98,6 +140,13 @@ func Encode(uml string) string {
 
 func GetDiagram(encodedUML string) (string, error) {
 	return getDiagram(encodedUML)
+}
+
+// ClearDiagramCache clears the diagram cache. Useful for testing.
+func ClearDiagramCache() {
+	diagramCacheMutex.Lock()
+	diagramCache = make(map[string]string)
+	diagramCacheMutex.Unlock()
 }
 
 // InsertPlantumlDiagram processes HTML to replace PlantUML code blocks with rendered diagrams.

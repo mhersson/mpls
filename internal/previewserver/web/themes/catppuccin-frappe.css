@@ -16,9 +16,16 @@
   --link-hover-color: #81c8be;
   --modal-background-color: rgba(48, 52, 70, 0.95);
   --modal-close-color: #c6d0f5;
+<<<<<<< HEAD
   --alert-note-color: #8caaee;
   --alert-tip-color: #a6d189;
   --alert-important-color: #ca9ee6;
   --alert-warning-color: #e5c890;
   --alert-caution-color: #e78284;
+=======
+  --heading-h1-color: #8caaee;
+  --heading-h2-color: #e5c890;
+  --heading-h3-color: #e78284;
+  --heading-bold-color: #ef9f76;
+>>>>>>> 8d9756a (feat(presentation): Add presentation mode)
 }

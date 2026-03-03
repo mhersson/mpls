@@ -281,6 +281,11 @@ document.addEventListener("DOMContentLoaded", () => {
       // Update content
       updateContent(renderedHtml);
 
+      // Notify presentation module of content update
+      if (window.presentation) {
+        window.presentation.onContentUpdate(renderedHtml);
+      }
+
       // Render and scroll
       await renderMermaidAndScroll(titleChanged);
     } catch (error) {

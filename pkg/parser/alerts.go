@@ -110,11 +110,13 @@ func detectAlert(para *ast.Paragraph, source []byte) (AlertType, bool) {
 		}
 
 		content := strings.TrimSpace(string(textNode.Segment.Value(source)))
+
 		switch i {
 		case 0:
 			if content != "[" {
 				return 0, false
 			}
+
 			child = child.NextSibling()
 
 		case 1:
@@ -122,12 +124,14 @@ func detectAlert(para *ast.Paragraph, source []byte) (AlertType, bool) {
 			if !ok {
 				return 0, false
 			}
+
 			child = child.NextSibling()
 
 		case 2:
 			if content != "]" {
 				return 0, false
 			}
+
 			return alertType, true
 		}
 	}
@@ -186,6 +190,7 @@ func (t *GitHubAlertTransformer) transformBlockquote(bq *ast.Blockquote, alertTy
 
 	// Move all remaining nodes to the new alert node
 	alertNode := &GitHubAlertNode{AlertType: alertType}
+
 	for child := bq.FirstChild(); child != nil; {
 		next := child.NextSibling()
 		bq.RemoveChild(bq, child)

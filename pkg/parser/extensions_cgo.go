@@ -1,6 +1,6 @@
 //go:build cgo
 
-package parser
+package parser //nolint:revive // Package name does not conflict with stdlib (go/parser is different)
 
 import (
 	katex "github.com/FurqanSoftware/goldmark-katex"

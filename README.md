@@ -22,8 +22,9 @@ preview feature that works alongside these editors. Additionally, `mpls` is
 compatible with any editor that supports the Language Server Protocol (LSP),
 making it a versatile tool for Markdown editing across various platforms. For
 users of Visual Studio Code and Zed, there are also dedicated extensions
-available at [mpls-vscode-client](https://github.com/mhersson/mpls-vscode-client)
-and [mpls for Zed](https://zed.dev/extensions/mpls),
+available at
+[mpls-vscode-client](https://github.com/mhersson/mpls-vscode-client) and
+[mpls for Zed](https://zed.dev/extensions/mpls),
 
 ![demo](screenshots/demo.gif)
 
@@ -45,6 +46,11 @@ and [mpls for Zed](https://zed.dev/extensions/mpls),
     perfect for focused editing.
   - **Multi-tab mode** (`--tabs`): Each file opens in its own browser tab for
     side-by-side viewing.
+- **Presentation Mode**: Automatically transform your markdown into a slideshow
+  presentation, or use explicit markers for full control over slide boundaries
+  and layout.
+  - Read more in the
+    [presentation mode documentation](docs/presentation-mode.md)
 
 ### Built with Goldmark
 

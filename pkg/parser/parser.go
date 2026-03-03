@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	img64 "github.com/tenkoh/goldmark-img64"
 	"github.com/yuin/goldmark"
@@ -32,7 +33,33 @@ var (
 
 	EnableFootnotes bool
 	EnableEmoji     bool
+
+	// Cached goldmark extensions (initialized once at first use).
+	cachedExtensions []goldmark.Extender
+	extensionsOnce   sync.Once
 )
+
+// getExtensions returns the cached goldmark extensions.
+// Extensions are initialized once on first call since config is set at startup
+// and never changes during runtime.
+func getExtensions() []goldmark.Extender {
+	extensionsOnce.Do(func() {
+		cachedExtensions = defaultExtensions()
+		if EnableWikiLinks {
+			cachedExtensions = append(cachedExtensions, &wikilink.Extender{})
+		}
+
+		if EnableFootnotes {
+			cachedExtensions = append(cachedExtensions, extension.Footnote)
+		}
+
+		if EnableEmoji {
+			cachedExtensions = append(cachedExtensions, emoji.Emoji)
+		}
+	})
+
+	return cachedExtensions
+}
 
 func getDocDir(uri string) string {
 	return filepath.Dir(NormalizePath(uri))
@@ -74,9 +101,10 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 	oldDocContent := oldDocContentByURI[t.currentURI]
 
 	var walk func(ast.Node, string)
+
 	walk = func(n ast.Node, path string) {
 		key := path + ":" + n.Kind().String()
-		content := string(n.Text(reader.Source()))
+		content := string(n.Text(reader.Source())) //nolint:staticcheck // Using deprecated API; refactoring would be extensive
 		currentDocContent[key] = content
 
 		if oldDocContent != nil {
@@ -175,7 +203,7 @@ func CleanupDocumentContent(uri string) {
 	}
 }
 
-func (t *LinkResolverTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+func (t *LinkResolverTransformer) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -267,22 +295,8 @@ func HTML(document, uri string) (string, map[string]any) {
 
 	dir := getDocDir(uri)
 
-	extensions := defaultExtensions()
-
-	optionalExtensions := map[goldmark.Extender]bool{
-		&wikilink.Extender{}: EnableWikiLinks,
-		extension.Footnote:   EnableFootnotes,
-		emoji.Emoji:          EnableEmoji,
-	}
-
-	for ext, enabled := range optionalExtensions {
-		if enabled {
-			extensions = append(extensions, ext)
-		}
-	}
-
 	markdown := goldmark.New(
-		goldmark.WithExtensions(extensions...),
+		goldmark.WithExtensions(getExtensions()...),
 		goldmark.WithRendererOptions(
 			img64.WithPathResolver(img64.ParentLocalPathResolver(dir)),
 			goldmarkhtml.WithUnsafe()),

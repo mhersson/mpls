@@ -1,0 +1,234 @@
+/* Presentation mode styles */
+
+#presentation-container {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--background-color);
+    color: var(--text-color);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+#presentation-container.active {
+    display: flex;
+}
+
+#slide-content {
+    min-width: 70vw;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+    padding: 2rem;
+    font-size: 1.5em;
+}
+
+#slide-content h1,
+#slide-content h2,
+#slide-content h3 {
+    margin-top: 0;
+    width: fit-content;
+}
+
+/* Header colors */
+#slide-content h1 {
+    color: var(--heading-h1-color, var(--link-color, #58a6ff));
+    font-size: 2.5em;
+}
+
+#slide-content h2 {
+    color: var(--heading-h2-color, var(--text-color));
+    font-size: 2em;
+}
+
+#slide-content h3 {
+    color: var(--heading-h3-color, var(--text-color));
+    font-size: 1.6em;
+}
+
+#slide-content h4,
+#slide-content h5,
+#slide-content h6 {
+    color: var(--heading-h3-color, var(--text-color));
+}
+
+/* Bold/strong text */
+#slide-content strong,
+#slide-content b {
+    color: var(--heading-bold-color, var(--heading-h2-color, var(--text-color)));
+}
+
+/* List styling */
+#slide-content ul,
+#slide-content ol {
+    padding-left: 1.5em;
+}
+
+#slide-content li {
+    margin-bottom: 0.5em;
+}
+
+#slide-content ul li::marker {
+    color: var(--heading-h1-color, var(--link-color, #58a6ff));
+    font-size: 1.2em;
+}
+
+#slide-content ol li::marker {
+    color: var(--heading-h1-color, var(--link-color, #58a6ff));
+    font-weight: bold;
+}
+
+/* Code blocks */
+#slide-content code {
+    background-color: var(--code-background-color);
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+}
+
+#slide-content pre {
+    background-color: var(--code-background-color);
+    padding: 1em;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+#slide-content pre code {
+    padding: 0;
+    background: none;
+}
+
+.slide-centered {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Two-column layout */
+.slide-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    width: 100% !important;
+    max-width: 100%;
+    align-items: start;
+    text-align: left;
+}
+
+.slide-column-left,
+.slide-column-right {
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.slide-column-left {
+    padding-right: 1rem;
+}
+
+.slide-column-right {
+    padding-left: 1rem;
+}
+
+/* Override centering for columns */
+.slide-centered .slide-columns {
+    align-self: stretch;
+}
+
+/* Navigation arrows */
+.slide-nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 3rem;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 1rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 10000;
+}
+
+.slide-nav:hover {
+    opacity: 1 !important;
+}
+
+.slide-nav:disabled {
+    opacity: 0.2 !important;
+    cursor: not-allowed;
+}
+
+#prev-slide {
+    left: 1rem;
+}
+
+#next-slide {
+    right: 1rem;
+}
+
+/* Slide counter */
+#slide-counter {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 10000;
+}
+
+/* Show controls when hovering or class applied */
+#presentation-container.controls-visible .slide-nav,
+#presentation-container.controls-visible #slide-counter {
+    opacity: 0.7;
+}
+
+#slide-counter:hover {
+    opacity: 1 !important;
+}
+
+/* Print styles for PDF export */
+@media print {
+    body > *:not(#presentation-container) {
+        display: none !important;
+    }
+
+    #presentation-container {
+        position: static;
+        display: block !important;
+        background: var(--background-color, white);
+        color: var(--text-color, black);
+    }
+
+    #presentation-container.active {
+        display: block;
+    }
+
+    #print-container {
+        display: block;
+    }
+
+    .slide-page {
+        page-break-after: always;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: 2rem;
+    }
+
+    .slide-page:last-child {
+        page-break-after: avoid;
+    }
+
+    .slide-nav,
+    #slide-counter {
+        display: none !important;
+    }
+}

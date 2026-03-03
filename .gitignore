@@ -6,3 +6,4 @@ assets/*
 cover.out
 # Added by goreleaser init:
 dist/
+docs/plans

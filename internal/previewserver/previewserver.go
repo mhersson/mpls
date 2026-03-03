@@ -45,6 +45,10 @@ var (
 	mermaid string
 	//go:embed web/ws.js
 	websocketJS string
+	//go:embed web/presentation.js
+	presentationJS string
+	//go:embed web/presentation.css
+	presentationCSS string
 	//go:embed web/fonts
 	katexFontsFS embed.FS
 	//go:embed web/themes
@@ -108,7 +112,9 @@ func WaitForClients(timeout time.Duration) error {
 			return fmt.Errorf("timeout waiting for clients to connect")
 		case <-ticker.C:
 			clientsMutex.RLock()
+
 			hasClients := len(clients) > 0
+
 			clientsMutex.RUnlock()
 
 			if hasClients {
@@ -220,6 +226,7 @@ func New() *Server {
 func (s *Server) SetWorkspaceRoot(root string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.WorkspaceRoot = root
 }
 
@@ -237,6 +244,8 @@ func isStaticAsset(path string) bool {
 		"/mermaid.min.js",
 		"/ws.js",
 		"/ws",
+		"/presentation.js",
+		"/presentation.css",
 	}
 
 	if slices.Contains(staticPaths, path) {
@@ -259,7 +268,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	// If no workspace root, serve the initial content
 	if workspaceRoot == "" {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(s.InitialContent))
+		_, _ = w.Write([]byte(s.InitialContent))
 
 		return
 	}
@@ -300,7 +309,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load file content
-	content, err := os.ReadFile(absolutePath)
+	content, err := os.ReadFile(absolutePath) //nolint:gosec // Path validated above: traversal check + workspace boundary check
 	if err != nil {
 		http.Error(w, "File not found", http.StatusNotFound)
 
@@ -322,6 +331,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	metaJSON, _ := json.Marshal(meta)
 
 	var metaMap map[string]any
+
 	_ = json.Unmarshal(metaJSON, &metaMap)
 
 	metaHTML := ""
@@ -345,7 +355,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf(`<summary id="header-summary">%s</summary>`, filepath.Base(absolutePath)), 1)
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(fullHTML))
+	_, _ = w.Write([]byte(fullHTML)) //nolint:gosec
 }
 
 func (s *Server) Start() {
@@ -354,6 +364,8 @@ func (s *Server) Start() {
 	http.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
 	http.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
 	http.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
+	http.HandleFunc("/presentation.js", handleResponse("application/javascript", presentationJS))
+	http.HandleFunc("/presentation.css", handleResponse("text/css", presentationCSS))
 
 	// Serve embedded KaTeX fonts
 	fontsSubFS, _ := fs.Sub(katexFontsFS, "web/fonts")
@@ -372,7 +384,7 @@ func (s *Server) Start() {
 		// Root path - serve initial content
 		if path == "/" || path == "" {
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(s.InitialContent))
+			_, _ = w.Write([]byte(s.InitialContent))
 
 			return
 		}
@@ -438,6 +450,7 @@ func (s *Server) CloseDocument(documentURI string, isLastDocument bool) {
 	for client := range clients {
 		clientList = append(clientList, client)
 	}
+
 	clientsMutex.RUnlock()
 
 	// Send to all clients without holding the lock
@@ -476,6 +489,7 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 	for client := range clients {
 		clientList = append(clientList, client)
 	}
+
 	clientsMutex.RUnlock()
 
 	// Send to all clients without holding the lock
@@ -521,7 +535,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
-		conn.Close()
+		_ = conn.Close()
+
 		clientsMutex.Lock()
 		delete(clients, conn)
 		clientsMutex.Unlock()
@@ -562,8 +577,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		if err := json.Unmarshal(msg, &incomingMsg); err == nil {
 			// Handle different message types
-			switch incomingMsg.Type {
-			case "openDocument":
+			if incomingMsg.Type == "openDocument" {
 				// Send to LSP request channel
 				LSPRequestChan <- OpenDocumentRequest{
 					URI:           incomingMsg.URI,
@@ -591,6 +605,7 @@ func handleMessages() {
 		for client := range clients {
 			clientList = append(clientList, client)
 		}
+
 		clientsMutex.RUnlock()
 
 		// Send to clients without holding the lock
@@ -610,7 +625,7 @@ func handleMessages() {
 		if len(failedClients) > 0 {
 			clientsMutex.Lock()
 			for _, client := range failedClients {
-				client.Close()
+				_ = client.Close()
 				delete(clients, client)
 			}
 			clientsMutex.Unlock()
@@ -628,12 +643,12 @@ func Openbrowser(url, browser string) error {
 			browserCommand = browser
 		}
 
-		err = exec.Command(browserCommand, url).Start()
+		err = exec.Command(browserCommand, url).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 	case "windows":
 		if browser != "" {
-			err = exec.Command(browser, url).Start()
+			err = exec.Command(browser, url).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 		} else {
-			err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+			err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 		}
 	case "darwin":
 		openArgs := []string{"-g", url}
@@ -641,7 +656,7 @@ func Openbrowser(url, browser string) error {
 			openArgs = append(openArgs[:1], "-a", browser, url)
 		}
 
-		err = exec.Command("open", openArgs...).Start()
+		err = exec.Command("open", openArgs...).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 	}
 
 	if err != nil {
