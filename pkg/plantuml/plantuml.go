@@ -6,13 +6,16 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"html"
+	htmlpkg "html"
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/html"
 )
 
 const plantumlMap = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_"
@@ -150,98 +153,191 @@ func ClearDiagramCache() {
 }
 
 // InsertPlantumlDiagram processes HTML to replace PlantUML code blocks with rendered diagrams.
+// Uses HTML tokenizer for proper parsing, handling nested tags and various attribute formats.
 func InsertPlantumlDiagram(data string, generate bool, plantumls []Plantuml) (string, []Plantuml, error) {
-	const startDelimiter = `<pre><code class="language-plantuml">`
+	tokenizer := html.NewTokenizer(strings.NewReader(data))
 
-	var builder strings.Builder
+	var result strings.Builder
 
 	var err error
 
 	numDiagrams := 0
-	start := 0
+
+	// State tracking
+	var inPre bool
+
+	var inPlantumlCode bool
+
+	var currentPreHasPlantuml bool // tracks if current <pre> block has plantuml
+
+	var preContent strings.Builder // accumulates content while scanning <pre>
+
+	var codeContent strings.Builder // accumulates PlantUML source code
 
 	for {
-		s, e := extractPlantUMLSection(data[start:])
-		if s == -1 || e == -1 {
-			builder.WriteString(data[start:])
+		tt := tokenizer.Next()
 
-			break
-		}
-
-		builder.WriteString(data[start : start+s])
-
-		htmlEncodedUml := data[start+s+len(startDelimiter) : start+e]
-		uml := html.UnescapeString(htmlEncodedUml)
-
-		// Only process if the UML content contains @startuml marker
-		// This prevents accidental rendering of syntax examples or incomplete diagrams
-		if !strings.Contains(uml, "@startuml") {
-			// Not a valid PlantUML diagram, keep the original code block
-			builder.WriteString(data[start+s : start+e+13])
-			start += e + 13
-
-			continue
-		}
-
-		p := Plantuml{}
-		p.EncodedUML = Encode(uml)
-
-		generated := false
-
-		for _, enc := range plantumls {
-			if p.EncodedUML == enc.EncodedUML {
-				p.Diagram = enc.Diagram
-				generated = true
-
-				break
+		switch tt {
+		case html.ErrorToken:
+			// End of document - flush any pending content
+			if inPre {
+				result.WriteString(preContent.String())
 			}
-		}
 
-		if !generated && generate {
-			p.Diagram, err = GetDiagram(p.EncodedUML)
-			if err != nil {
-				return data, plantumls, err
+			return result.String(), plantumls, err
+
+		case html.StartTagToken:
+			token := tokenizer.Token()
+
+			if token.Data == "pre" {
+				inPre = true
+				currentPreHasPlantuml = false
+
+				preContent.Reset()
+				preContent.WriteString(token.String())
+
+				continue
 			}
-		}
 
-		numDiagrams++
+			if inPre && token.Data == "code" && hasLanguagePlantuml(token.Attr) {
+				inPlantumlCode = true
+				currentPreHasPlantuml = true
 
-		if generate {
-			if len(plantumls) < numDiagrams {
-				plantumls = append(plantumls, p)
+				codeContent.Reset()
+				preContent.WriteString(token.String())
+
+				continue
+			}
+
+			if inPre {
+				preContent.WriteString(token.String())
 			} else {
-				plantumls[numDiagrams-1] = p
+				result.WriteString(token.String())
 			}
 
-			builder.WriteString(p.Diagram)
-		} else if len(plantumls) >= numDiagrams {
-			// Use existing until we save and generate a new one
-			builder.WriteString(plantumls[numDiagrams-1].Diagram)
+		case html.EndTagToken:
+			token := tokenizer.Token()
+
+			if token.Data == "code" && inPlantumlCode {
+				inPlantumlCode = false
+
+				htmlEncodedUml := codeContent.String()
+				uml := htmlpkg.UnescapeString(htmlEncodedUml)
+
+				// Only process if the UML content contains @startuml marker
+				if !strings.Contains(uml, "@startuml") {
+					// Not a valid PlantUML diagram, keep the original code block
+					currentPreHasPlantuml = false
+
+					preContent.WriteString(htmlEncodedUml)
+					preContent.WriteString(token.String())
+
+					continue
+				}
+
+				p := Plantuml{}
+				p.EncodedUML = Encode(uml)
+
+				generated := false
+
+				for _, enc := range plantumls {
+					if p.EncodedUML == enc.EncodedUML {
+						p.Diagram = enc.Diagram
+						generated = true
+
+						break
+					}
+				}
+
+				if !generated && generate {
+					p.Diagram, err = GetDiagram(p.EncodedUML)
+					if err != nil {
+						return data, plantumls, err
+					}
+				}
+
+				numDiagrams++
+
+				if generate {
+					if len(plantumls) < numDiagrams {
+						plantumls = append(plantumls, p)
+					} else {
+						plantumls[numDiagrams-1] = p
+					}
+					// Don't add to preContent - we'll output the diagram when </pre> is reached
+				}
+
+				continue
+			}
+
+			if token.Data == "pre" && inPre {
+				inPre = false
+
+				if currentPreHasPlantuml {
+					// We had PlantUML in this pre block - output diagram instead
+					if generate {
+						result.WriteString(plantumls[numDiagrams-1].Diagram)
+					} else if len(plantumls) >= numDiagrams {
+						result.WriteString(plantumls[numDiagrams-1].Diagram)
+					}
+				} else {
+					// Regular pre block - output as-is
+					preContent.WriteString(token.String())
+					result.WriteString(preContent.String())
+				}
+
+				continue
+			}
+
+			if inPre {
+				if inPlantumlCode {
+					// Content inside <code class="language-plantuml">
+					codeContent.WriteString(token.String())
+				} else {
+					preContent.WriteString(token.String())
+				}
+			} else {
+				result.WriteString(token.String())
+			}
+
+		case html.TextToken:
+			raw := string(tokenizer.Raw())
+
+			switch {
+			case inPlantumlCode:
+				codeContent.WriteString(raw)
+			case inPre:
+				preContent.WriteString(raw)
+			default:
+				result.WriteString(raw)
+			}
+
+		default:
+			raw := string(tokenizer.Raw())
+
+			if inPre {
+				if inPlantumlCode {
+					codeContent.WriteString(raw)
+				} else {
+					preContent.WriteString(raw)
+				}
+			} else {
+				result.WriteString(raw)
+			}
 		}
-
-		start += e + 13
 	}
-
-	return builder.String(), plantumls, nil
 }
 
-func extractPlantUMLSection(text string) (int, int) {
-	const startDelimiter = `<pre><code class="language-plantuml">`
+// hasLanguagePlantuml checks if the attributes contain class="language-plantuml".
+func hasLanguagePlantuml(attrs []html.Attribute) bool {
+	for _, attr := range attrs {
+		if attr.Key == "class" {
+			// Check if "language-plantuml" is one of the classes
+			classes := strings.Fields(attr.Val)
 
-	const endDelimiter = "</code></pre>"
-
-	startIndex := strings.Index(text, startDelimiter)
-	if startIndex == -1 {
-		return -1, -1
+			return slices.Contains(classes, "language-plantuml")
+		}
 	}
 
-	endIndex := strings.Index(text[startIndex+len(startDelimiter):], endDelimiter)
-	if endIndex == -1 {
-		return startIndex, -1
-	}
-
-	// Calculate the actual end index in the original text
-	endIndex += startIndex + len(startDelimiter)
-
-	return startIndex, endIndex
+	return false
 }

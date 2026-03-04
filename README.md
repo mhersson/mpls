@@ -67,9 +67,6 @@ rendering experience:
 
 - Github Flavored Markdown: Goldmark's built in GFM extension ensures Table,
   Strikethrough, Linkify and TaskList elements are displayed correctly.
-- Image Rendering: The [img64](https://github.com/tenkoh/goldmark-img64)
-  extension allows for seamless integration of images within your Markdown
-  files.
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
   KaTeX. _Please note that the KaTeX extension requires `cgo` and will only be

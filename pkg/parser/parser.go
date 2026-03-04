@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	img64 "github.com/tenkoh/goldmark-img64"
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
 	meta "github.com/yuin/goldmark-meta"
@@ -298,7 +297,6 @@ func HTML(document, uri string) (string, map[string]any) {
 	markdown := goldmark.New(
 		goldmark.WithExtensions(getExtensions()...),
 		goldmark.WithRendererOptions(
-			img64.WithPathResolver(img64.ParentLocalPathResolver(dir)),
 			goldmarkhtml.WithUnsafe()),
 		goldmark.WithParserOptions(
 			parser.WithASTTransformers(
@@ -320,5 +318,8 @@ func HTML(document, uri string) (string, map[string]any) {
 		return errorHTML, nil
 	}
 
-	return buf.String(), meta.Get(ctx)
+	// Convert all <img> tags with local paths to base64 data URIs
+	htmlOutput := convertHTMLImages(buf.String(), dir)
+
+	return htmlOutput, meta.Get(ctx)
 }

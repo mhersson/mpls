@@ -35,6 +35,12 @@ var (
 	OpenBrowserOnStartup bool
 	EnableTabs           bool
 
+	// Current content state for single-page mode.
+	currentHTML  string
+	currentTitle string
+	currentMeta  string
+	contentMutex sync.RWMutex
+
 	//go:embed web/index.html
 	indexHTML string
 	//go:embed web/katex.min.css
@@ -475,6 +481,15 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 
 	e := Event{HTML: newContent, Title: t, Meta: m, DocumentURI: documentURI}
 
+	// Store current content for single-page mode (when no documentURI filtering)
+	if !EnableTabs {
+		contentMutex.Lock()
+		currentHTML = newContent
+		currentTitle = t
+		currentMeta = m
+		contentMutex.Unlock()
+	}
+
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
@@ -555,6 +570,27 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		if err := conn.WriteMessage(websocket.TextMessage, msgJSON); err != nil {
 			fmt.Fprintf(os.Stderr, "%s error sending config: %v\n", logTime(), err)
 		}
+	}
+
+	// In single-page mode, send current content to newly connected client
+	if !EnableTabs {
+		contentMutex.RLock()
+
+		if currentHTML != "" {
+			contentMsg := map[string]any{
+				"HTML":        currentHTML,
+				"Title":       currentTitle,
+				"Meta":        currentMeta,
+				"DocumentURI": "",
+			}
+			if msgJSON, err := json.Marshal(contentMsg); err == nil {
+				if err := conn.WriteMessage(websocket.TextMessage, msgJSON); err != nil {
+					fmt.Fprintf(os.Stderr, "%s error sending current content: %v\n", logTime(), err)
+				}
+			}
+		}
+
+		contentMutex.RUnlock()
 	}
 
 	for {
