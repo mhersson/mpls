@@ -18,5 +18,6 @@ func defaultExtensions() []goldmark.Extender {
 		),
 		meta.Meta,
 		img64.Img64,
+		&GitHubAlertExtension{},
 	}
 }
