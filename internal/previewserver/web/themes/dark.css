@@ -15,13 +15,8 @@
   --modal-background-color: rgba(0, 0, 0, 0.95);
   --modal-close-color: #c9d1d9;
   --alert-note-color: #4493f8;
-  --alert-note-border: #4493f8;
   --alert-tip-color: #3fb950;
-  --alert-tip-border: #3fb950;
   --alert-important-color: #ab7df8;
-  --alert-important-border: #ab7df8;
   --alert-warning-color: #d29922;
-  --alert-warning-border: #d29922;
   --alert-caution-color: #f85149;
-  --alert-caution-border: #f85149;
 }

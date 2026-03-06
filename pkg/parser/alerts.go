@@ -118,7 +118,7 @@ type GitHubAlertTransformer struct{}
 func detectAlert(para *ast.Paragraph, source []byte) (AlertType, bool) {
 	var alertType AlertType
 
-	for i, child := 0, para.FirstChild(); i < 3; i++ {
+	for i, child := 0, para.FirstChild(); i < 3 && child != nil; i++ {
 		textNode, ok := child.(*ast.Text)
 		if !ok {
 			return 0, false
