@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -23,6 +24,7 @@ import (
 )
 
 const ScrollAnchor = "mpls-scroll-anchor"
+const maxDocContentCache = 100
 
 var (
 	oldDocContentByURI    map[string]map[string]string // URI -> content map
@@ -139,7 +141,7 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 		}
 
 		for i, child := 0, n.FirstChild(); child != nil; i, child = i+1, child.NextSibling() {
-			walk(child, fmt.Sprintf("%s.%d", path, i))
+			walk(child, path+"."+strconv.Itoa(i))
 		}
 	}
 
@@ -190,6 +192,17 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 	}
 
 	oldDocContentByURI[t.currentURI] = currentDocContent
+
+	// Evict old entries if cache exceeds limit
+	if len(oldDocContentByURI) > maxDocContentCache {
+		for k := range oldDocContentByURI {
+			delete(oldDocContentByURI, k)
+
+			if len(oldDocContentByURI) < maxDocContentCache/2 {
+				break
+			}
+		}
+	}
 }
 
 type LinkResolverTransformer struct {
