@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+	"html/template"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -49,9 +51,6 @@ func (t AlertType) String() string {
 		return "Note"
 	}
 }
-
-// CSSClass returns the CSS class suffix for the alert type.
-func (t AlertType) CSSClass() string { return strings.ToLower(t.String()) }
 
 // SVGIcon returns the GitHub-matching SVG icon for the alert type.
 func (t AlertType) SVGIcon() string {
@@ -207,20 +206,29 @@ func (r *GitHubAlertRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegiste
 
 func (r *GitHubAlertRenderer) renderAlert(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
-		_, _ = w.WriteString("</div>\n")
-
-		return ast.WalkContinue, nil
+		_, err := w.WriteString("</div>\n")
+		return ast.WalkContinue, err
 	}
 
-	alertNode := node.(*GitHubAlertNode)
+	alertNode, ok := node.(*GitHubAlertNode)
+	if !ok {
+		return ast.WalkStop, fmt.Errorf("renderAlert must be called with a %T node", alertNode)
+	}
 
-	_, _ = w.WriteString(`<div class="markdown-alert markdown-alert-`)
-	_, _ = w.WriteString(alertNode.AlertType.CSSClass())
-	_, _ = w.WriteString("\">\n")
-	_, _ = w.WriteString(`<p class="markdown-alert-title">`)
-	_, _ = w.WriteString(alertNode.AlertType.SVGIcon())
-	_, _ = w.WriteString(alertNode.AlertType.String())
-	_, _ = w.WriteString("</p>\n")
+	tmpl, err := template.New("alert").Funcs(template.FuncMap{"toLower": strings.ToLower}).Parse(`
+<div class="markdown-alert markdown-alert-{{ .Type | toLower }}">
+<p class="markdown-alert-title">{{ .Icon }}{{ .Type }}</p>
+`)
+	if err != nil {
+		return ast.WalkStop, err
+	}
+
+	if err := tmpl.Execute(w, map[string]any{
+		"Type": alertNode.AlertType.String(),
+		"Icon": template.HTML(alertNode.AlertType.SVGIcon()),
+	}); err != nil {
+		return ast.WalkStop, err
+	}
 
 	return ast.WalkContinue, nil
 }
