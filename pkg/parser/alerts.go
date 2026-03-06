@@ -118,28 +118,36 @@ type GitHubAlertTransformer struct{}
 func detectAlert(para *ast.Paragraph, source []byte) (AlertType, bool) {
 	var alertType AlertType
 
-	for i, child := 0, para.FirstChild(); child != nil && i < 3; child = child.NextSibling() {
+	for i, child := 0, para.FirstChild(); i < 3; i++ {
 		textNode, ok := child.(*ast.Text)
 		if !ok {
 			return 0, false
 		}
 
 		content := strings.TrimSpace(string(textNode.Segment.Value(source)))
-		switch i++; i {
-		case 1:
-			ok = content == "["
-		case 2:
-			alertType, ok = alertTags[content]
-		case 3:
-			ok = content == "]"
-		}
-		if !ok {
-			return 0, false
-		}
+		switch i {
+		case 0:
+			if content != "[" {
+				return 0, false
+			}
+			child = child.NextSibling()
 
+		case 1:
+			alertType, ok = alertTags[content]
+			if !ok {
+				return 0, false
+			}
+			child = child.NextSibling()
+
+		case 2:
+			if content != "]" {
+				return 0, false
+			}
+			return alertType, true
+		}
 	}
 
-	return alertType, true
+	return 0, false
 }
 
 type transformEntry struct {
