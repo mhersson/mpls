@@ -1,29 +1,26 @@
 /* Light colors CSS */
 :root {
-  --text-color: #24292e;
-  --background-color: #ffffff;
-  --border-color: #e1e4e8;
-  --code-background-color: #f6f8fa;
-  --table-header-background: #f6f8fa;
-  --even-row-background: #f9f9f9;
-  --blockquote-color: #6a737d;
-  --blockquote-background: #f6f8fa;
-  --blockquote-border-color: #d1d5da;
-  --link-color: #0366d6;
-  --link-visited-color: #6f42c1;
-  --link-hover-color: #0056b3;
-  --modal-background-color: rgba(249, 249, 249, 0.95);
-  --modal-close-color: #24292e;
-<<<<<<< HEAD
-  --alert-note-color: #0969da;
-  --alert-tip-color: #1a7f37;
-  --alert-important-color: #8250df;
-  --alert-warning-color: #9a6700;
-  --alert-caution-color: #d1242f;
-=======
-  --heading-h1-color: #0366d6;
-  --heading-h2-color: #b08800;
-  --heading-h3-color: #cb2431;
-  --heading-bold-color: #e36209;
->>>>>>> 8d9756a (feat(presentation): Add presentation mode)
+    --text-color: #24292e;
+    --background-color: #ffffff;
+    --border-color: #e1e4e8;
+    --code-background-color: #f6f8fa;
+    --table-header-background: #f6f8fa;
+    --even-row-background: #f9f9f9;
+    --blockquote-color: #6a737d;
+    --blockquote-background: #f6f8fa;
+    --blockquote-border-color: #d1d5da;
+    --link-color: #0366d6;
+    --link-visited-color: #6f42c1;
+    --link-hover-color: #0056b3;
+    --modal-background-color: rgba(249, 249, 249, 0.95);
+    --modal-close-color: #24292e;
+    --alert-note-color: #0969da;
+    --alert-tip-color: #1a7f37;
+    --alert-important-color: #8250df;
+    --alert-warning-color: #9a6700;
+    --alert-caution-color: #d1242f;
+    --heading-h1-color: #0366d6;
+    --heading-h2-color: #b08800;
+    --heading-h3-color: #cb2431;
+    --heading-bold-color: #e36209;
 }

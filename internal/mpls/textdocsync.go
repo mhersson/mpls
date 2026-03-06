@@ -32,7 +32,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("TextDocumentDidOpen: "+params.TextDocument.URI))
 
 	// Always render HTML (even with --no-auto, so it's ready when user runs open-preview)
-	html, meta := parser.HTML(content, uri)
+	html, meta := parser.HTML(content, uri, 0)
 
 	var plantUMLs []plantuml.Plantuml
 
@@ -148,7 +148,9 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 			startIndex, endIndex := c.Range.IndexesIn(docState.Content)
 			docState.Content = docState.Content[:startIndex] + c.Text + docState.Content[endIndex:]
 
-			html, meta := parser.HTML(docState.Content, uri)
+			// Use line-based targeting: convert 0-based LSP line to 1-based
+			changeLine := int(c.Range.Start.Line) + 1
+			html, meta := parser.HTML(docState.Content, uri, changeLine)
 
 			html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, false, docState.PlantUMLs)
 			if err != nil {
@@ -168,7 +170,8 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 		} else if c, ok := change.(protocol.TextDocumentContentChangeEventWhole); ok {
 			docState.Content = c.Text
 
-			html, meta := parser.HTML(c.Text, uri)
+			// No range info available, use content diff fallback
+			html, meta := parser.HTML(c.Text, uri, 0)
 
 			html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, false, docState.PlantUMLs)
 			if err != nil {
@@ -222,7 +225,7 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 
 	docState.Content = content
 
-	html, meta := parser.HTML(content, uri)
+	html, meta := parser.HTML(content, uri, 0)
 
 	html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, true, docState.PlantUMLs)
 	if err != nil {

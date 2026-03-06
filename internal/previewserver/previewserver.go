@@ -324,7 +324,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 
 	// Render HTML
 	fileURI := "file://" + absolutePath
-	renderedHTML, meta := parser.HTML(string(content), fileURI)
+	renderedHTML, meta := parser.HTML(string(content), fileURI, 0)
 
 	// Process PlantUML diagrams
 	renderedHTML, _, err = plantuml.InsertPlantumlDiagram(renderedHTML, true, []plantuml.Plantuml{})
@@ -460,10 +460,24 @@ func (s *Server) CloseDocument(documentURI string, isLastDocument bool) {
 	clientsMutex.RUnlock()
 
 	// Send to all clients without holding the lock
+	var failedClients []*websocket.Conn
+
 	for _, client := range clientList {
 		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
 			fmt.Fprintf(os.Stderr, "%s error sending close message: %v\n", logTime(), err)
+
+			failedClients = append(failedClients, client)
 		}
+	}
+
+	// Clean up failed clients
+	if len(failedClients) > 0 {
+		clientsMutex.Lock()
+		for _, client := range failedClients {
+			_ = client.Close()
+			delete(clients, client)
+		}
+		clientsMutex.Unlock()
 	}
 }
 
@@ -508,10 +522,24 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 	clientsMutex.RUnlock()
 
 	// Send to all clients without holding the lock
+	var failedClients []*websocket.Conn
+
 	for _, client := range clientList {
 		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
 			fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
+
+			failedClients = append(failedClients, client)
 		}
+	}
+
+	// Clean up failed clients
+	if len(failedClients) > 0 {
+		clientsMutex.Lock()
+		for _, client := range failedClients {
+			_ = client.Close()
+			delete(clients, client)
+		}
+		clientsMutex.Unlock()
 	}
 }
 

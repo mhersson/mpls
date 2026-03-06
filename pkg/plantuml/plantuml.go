@@ -179,7 +179,12 @@ func InsertPlantumlDiagram(data string, generate bool, plantumls []Plantuml) (st
 
 		switch tt {
 		case html.ErrorToken:
-			// End of document - flush any pending content
+			// End of document - flush any pending content.
+			// If we're mid-PlantUML block (malformed HTML), flush codeContent to preContent first.
+			if inPlantumlCode {
+				preContent.WriteString(codeContent.String())
+			}
+
 			if inPre {
 				result.WriteString(preContent.String())
 			}

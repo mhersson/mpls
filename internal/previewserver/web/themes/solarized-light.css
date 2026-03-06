@@ -2,30 +2,27 @@
 /* Based on the Solarized theme by Ethan Schoonover */
 /* URL: https://ethanschoonover.com/solarized */
 :root {
-  --text-color: #657b83;
-  --background-color: #fdf6e3;
-  --border-color: #eee8d5;
-  --code-background-color: #eee8d5;
-  --table-header-background: #eee8d5;
-  --even-row-background: #f5eedb;
-  --blockquote-color: #586e75;
-  --blockquote-background: #eee8d5;
-  --blockquote-border-color: #2aa198;
-  --link-color: #268bd2;
-  --link-visited-color: #6c71c4;
-  --link-hover-color: #2aa198;
-  --modal-background-color: rgba(253, 246, 227, 0.95);
-  --modal-close-color: #657b83;
-<<<<<<< HEAD
-  --alert-note-color: #268bd2;
-  --alert-tip-color: #2aa198;
-  --alert-important-color: #6c71c4;
-  --alert-warning-color: #b58900;
-  --alert-caution-color: #dc322f;
-=======
-  --heading-h1-color: #268bd2;
-  --heading-h2-color: #b58900;
-  --heading-h3-color: #dc322f;
-  --heading-bold-color: #cb4b16;
->>>>>>> 8d9756a (feat(presentation): Add presentation mode)
+    --text-color: #657b83;
+    --background-color: #fdf6e3;
+    --border-color: #eee8d5;
+    --code-background-color: #eee8d5;
+    --table-header-background: #eee8d5;
+    --even-row-background: #f5eedb;
+    --blockquote-color: #586e75;
+    --blockquote-background: #eee8d5;
+    --blockquote-border-color: #2aa198;
+    --link-color: #268bd2;
+    --link-visited-color: #6c71c4;
+    --link-hover-color: #2aa198;
+    --modal-background-color: rgba(253, 246, 227, 0.95);
+    --modal-close-color: #657b83;
+    --alert-note-color: #268bd2;
+    --alert-tip-color: #2aa198;
+    --alert-important-color: #6c71c4;
+    --alert-warning-color: #b58900;
+    --alert-caution-color: #dc322f;
+    --heading-h1-color: #268bd2;
+    --heading-h2-color: #b58900;
+    --heading-h3-color: #dc322f;
+    --heading-bold-color: #cb4b16;
 }

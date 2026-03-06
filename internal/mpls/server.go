@@ -148,7 +148,7 @@ func startDocumentRequestHandler(ctx *glsp.Context) {
 							// Document not in registry, load from disk
 							content, err := loadDocument(fileURI)
 							if err == nil {
-								html, meta := parser.HTML(content, fileURI)
+								html, meta := parser.HTML(content, fileURI, 0)
 								html, _, _ = plantuml.InsertPlantumlDiagram(html, true, []plantuml.Plantuml{})
 
 								docState = &DocumentState{
