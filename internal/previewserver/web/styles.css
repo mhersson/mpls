@@ -163,43 +163,43 @@ blockquote {
 }
 
 .markdown-alert-note {
-  border-left-color: #4493f8;
+  border-left-color: var(--alert-note-border, #4493f8);
 }
 
 .markdown-alert-note .markdown-alert-title {
-  color: #4493f8;
+  color: var(--alert-note-color, #4493f8);
 }
 
 .markdown-alert-tip {
-  border-left-color: #3fb950;
+  border-left-color: var(--alert-tip-border, #3fb950);
 }
 
 .markdown-alert-tip .markdown-alert-title {
-  color: #3fb950;
+  color: var(--alert-tip-color, #3fb950);
 }
 
 .markdown-alert-important {
-  border-left-color: #ab7df8;
+  border-left-color: var(--alert-important-border, #ab7df8);
 }
 
 .markdown-alert-important .markdown-alert-title {
-  color: #ab7df8;
+  color: var(--alert-important-color, #ab7df8);
 }
 
 .markdown-alert-warning {
-  border-left-color: #d29922;
+  border-left-color: var(--alert-warning-border, #d29922);
 }
 
 .markdown-alert-warning .markdown-alert-title {
-  color: #d29922;
+  color: var(--alert-warning-color, #d29922);
 }
 
 .markdown-alert-caution {
-  border-left-color: #f85149;
+  border-left-color: var(--alert-caution-border, #f85149);
 }
 
 .markdown-alert-caution .markdown-alert-title {
-  color: #f85149;
+  color: var(--alert-caution-color, #f85149);
 }
 
 a {

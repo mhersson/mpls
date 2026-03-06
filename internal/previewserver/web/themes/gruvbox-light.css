@@ -16,4 +16,14 @@
   --link-hover-color: #427b58;
   --modal-background-color: rgba(251, 241, 199, 0.95);
   --modal-close-color: #3c3836;
+  --alert-note-color: #076678;
+  --alert-note-border: #076678;
+  --alert-tip-color: #79740e;
+  --alert-tip-border: #79740e;
+  --alert-important-color: #8f3f71;
+  --alert-important-border: #8f3f71;
+  --alert-warning-color: #b57614;
+  --alert-warning-border: #b57614;
+  --alert-caution-color: #9d0006;
+  --alert-caution-border: #9d0006;
 }
