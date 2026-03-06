@@ -7,7 +7,6 @@ import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 )
@@ -203,9 +202,7 @@ func (t *GitHubAlertTransformer) transformBlockquote(bq *ast.Blockquote, alertTy
 }
 
 // GitHubAlertRenderer renders GitHubAlertNode nodes to HTML.
-type GitHubAlertRenderer struct {
-	html.Config
-}
+type GitHubAlertRenderer struct{}
 
 // RegisterFuncs registers the renderer function for GitHubAlertNode.
 func (r *GitHubAlertRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
