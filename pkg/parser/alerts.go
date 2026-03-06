@@ -51,22 +51,7 @@ func (t AlertType) String() string {
 }
 
 // CSSClass returns the CSS class suffix for the alert type.
-func (t AlertType) CSSClass() string {
-	switch t {
-	case AlertNote:
-		return "note"
-	case AlertTip:
-		return "tip"
-	case AlertImportant:
-		return "important"
-	case AlertWarning:
-		return "warning"
-	case AlertCaution:
-		return "caution"
-	default:
-		return "note"
-	}
-}
+func (t AlertType) CSSClass() string { return strings.ToLower(t.String()) }
 
 // SVGIcon returns the GitHub-matching SVG icon for the alert type.
 func (t AlertType) SVGIcon() string {
@@ -193,7 +178,10 @@ func (t *GitHubAlertTransformer) transformBlockquote(bq *ast.Blockquote, alertTy
 	// Remove the "[", "!TAG", and "]" text nodes
 	para := bq.FirstChild().(*ast.Paragraph)
 	for range 3 {
-		para.RemoveChild(para, para.FirstChild())
+		// detectAlert guarantees there will be at least 3 children
+		if child := para.FirstChild(); child != nil {
+			para.RemoveChild(para, child)
+		}
 	}
 
 	// Move all remaining nodes to the new alert node
