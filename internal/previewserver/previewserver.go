@@ -60,11 +60,11 @@ var (
 	//go:embed web/themes
 	themesFS embed.FS
 
-	broadcast      = make(chan []byte)
-	clients        = make(map[*websocket.Conn]bool)
-	clientsMutex   sync.RWMutex
-	stopChan       = make(chan os.Signal, 1)
-	LSPRequestChan = make(chan OpenDocumentRequest)
+	clients         []*websocket.Conn
+	clientsMutex    sync.Mutex
+	clientConnected = make(chan struct{}, 1)
+	stopChan        = make(chan os.Signal, 1)
+	LSPRequestChan  = make(chan OpenDocumentRequest)
 )
 
 type OpenDocumentRequest struct {
@@ -78,7 +78,6 @@ type Server struct {
 	InitialContent string
 	Port           int
 	WorkspaceRoot  string
-	mutex          sync.RWMutex
 }
 
 func logTime() string {
@@ -106,41 +105,39 @@ func ListThemes() {
 }
 
 func WaitForClients(timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for clients to connect")
-		case <-ticker.C:
-			clientsMutex.RLock()
-
-			hasClients := len(clients) > 0
-
-			clientsMutex.RUnlock()
-
-			if hasClients {
-				return nil
-			}
-		}
+	select {
+	case <-clientConnected:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout waiting for clients to connect")
 	}
 }
 
-// GetClients returns a slice of all currently connected WebSocket clients.
-func GetClients() []*websocket.Conn {
-	clientsMutex.RLock()
-	defer clientsMutex.RUnlock()
+// HasClients returns true if any WebSocket clients are connected.
+func HasClients() bool {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
 
-	result := make([]*websocket.Conn, 0, len(clients))
-	for client := range clients {
-		result = append(result, client)
+	return len(clients) > 0
+}
+
+// broadcastToClients sends a message to all connected clients, removing any that fail.
+func broadcastToClients(msg []byte) {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
+
+	alive := clients[:0]
+	for _, c := range clients {
+		if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
+			fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
+
+			_ = c.Close()
+		} else {
+			alive = append(alive, c)
+		}
 	}
 
-	return result
+	clients = alive
 }
 
 // GetChromaStyleForTheme returns a recommended chroma syntax highlighting style for a given theme.
@@ -230,16 +227,10 @@ func New() *Server {
 }
 
 func (s *Server) SetWorkspaceRoot(root string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	s.WorkspaceRoot = root
 }
 
 func (s *Server) GetWorkspaceRoot() string {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
 	return s.WorkspaceRoot
 }
 
@@ -409,8 +400,6 @@ func (s *Server) Start() {
 
 	signal.Notify(stopChan, os.Interrupt)
 
-	go handleMessages()
-
 	go func() {
 		if err := s.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("%s error starting server: %s\n", logTime(), err)
@@ -449,36 +438,7 @@ func (s *Server) CloseDocument(documentURI string, isLastDocument bool) {
 		return
 	}
 
-	// Broadcast directly to connected clients
-	clientsMutex.RLock()
-
-	clientList := make([]*websocket.Conn, 0, len(clients))
-	for client := range clients {
-		clientList = append(clientList, client)
-	}
-
-	clientsMutex.RUnlock()
-
-	// Send to all clients without holding the lock
-	var failedClients []*websocket.Conn
-
-	for _, client := range clientList {
-		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
-			fmt.Fprintf(os.Stderr, "%s error sending close message: %v\n", logTime(), err)
-
-			failedClients = append(failedClients, client)
-		}
-	}
-
-	// Clean up failed clients
-	if len(failedClients) > 0 {
-		clientsMutex.Lock()
-		for _, client := range failedClients {
-			_ = client.Close()
-			delete(clients, client)
-		}
-		clientsMutex.Unlock()
-	}
+	broadcastToClients(eventJSON)
 }
 
 // UpdateWithURI updates the current HTML content with document URI for client filtering.
@@ -511,36 +471,7 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 		return
 	}
 
-	// Broadcast directly to connected clients
-	clientsMutex.RLock()
-
-	clientList := make([]*websocket.Conn, 0, len(clients))
-	for client := range clients {
-		clientList = append(clientList, client)
-	}
-
-	clientsMutex.RUnlock()
-
-	// Send to all clients without holding the lock
-	var failedClients []*websocket.Conn
-
-	for _, client := range clientList {
-		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
-			fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
-
-			failedClients = append(failedClients, client)
-		}
-	}
-
-	// Clean up failed clients
-	if len(failedClients) > 0 {
-		clientsMutex.Lock()
-		for _, client := range failedClients {
-			_ = client.Close()
-			delete(clients, client)
-		}
-		clientsMutex.Unlock()
-	}
+	broadcastToClients(eventJSON)
 }
 
 // Stop gracefully shuts down the server.
@@ -577,19 +508,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer func() {
-		_ = conn.Close()
-
-		clientsMutex.Lock()
-		delete(clients, conn)
-		clientsMutex.Unlock()
-	}()
-
-	clientsMutex.Lock()
-	clients[conn] = true
-	clientsMutex.Unlock()
-
-	// Send initial config synchronously with error handling
+	// Send initial messages BEFORE adding to clients slice to avoid
+	// concurrent writes with broadcastToClients
 	configMsg := map[string]any{
 		"Type":       "config",
 		"EnableTabs": EnableTabs,
@@ -620,6 +540,35 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		contentMutex.RUnlock()
 	}
+
+	// Add client to list AFTER initial messages are sent
+	clientsMutex.Lock()
+	wasEmpty := len(clients) == 0
+	clients = append(clients, conn)
+	clientsMutex.Unlock()
+
+	// Signal first client connected
+	if wasEmpty {
+		select {
+		case clientConnected <- struct{}{}:
+		default:
+		}
+	}
+
+	defer func() {
+		_ = conn.Close()
+
+		// Remove client from slice
+		clientsMutex.Lock()
+		for i, c := range clients {
+			if c == conn {
+				clients = append(clients[:i], clients[i+1:]...)
+
+				break
+			}
+		}
+		clientsMutex.Unlock()
+	}()
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -653,47 +602,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Not a recognized request type, broadcast it (for backward compatibility)
-		broadcast <- msg
-	}
-}
-
-func handleMessages() {
-	for {
-		msg := <-broadcast
-
-		// Create snapshot of clients with read lock
-		clientsMutex.RLock()
-
-		clientList := make([]*websocket.Conn, 0, len(clients))
-		for client := range clients {
-			clientList = append(clientList, client)
-		}
-
-		clientsMutex.RUnlock()
-
-		// Send to clients without holding the lock
-		var failedClients []*websocket.Conn
-
-		for _, client := range clientList {
-			if err := client.WriteMessage(websocket.TextMessage, msg); err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					fmt.Fprintf(os.Stderr, "%s error while writing message: %v\n", logTime(), err)
-
-					failedClients = append(failedClients, client)
-				}
-			}
-		}
-
-		// Clean up failed clients with write lock
-		if len(failedClients) > 0 {
-			clientsMutex.Lock()
-			for _, client := range failedClients {
-				_ = client.Close()
-				delete(clients, client)
-			}
-			clientsMutex.Unlock()
-		}
+		// Unknown message types are ignored (no broadcast needed)
 	}
 }
 

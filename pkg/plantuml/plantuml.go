@@ -32,7 +32,7 @@ var enc *base64.Encoding
 var (
 	diagramCache      = make(map[string]string) // encodedUML -> diagram HTML
 	diagramCacheMutex sync.RWMutex
-	maxCacheSize      = 100 // Max cached diagrams
+	maxCacheSize      = 20 // Max cached diagrams
 )
 
 func init() {

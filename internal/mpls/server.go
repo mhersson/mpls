@@ -34,8 +34,11 @@ func log(message string) string {
 }
 
 func Run() {
-	serverCtx, serverCancel = context.WithCancel(context.Background())
-	defer serverCancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	serverCtx = ctx
+	serverCancel = cancel
 
 	previewServer = previewserver.New()
 	go previewServer.Start()

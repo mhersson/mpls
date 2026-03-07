@@ -25,7 +25,7 @@ import (
 
 const (
 	ScrollAnchor       = "mpls-scroll-anchor"
-	maxDocContentCache = 100
+	maxDocContentCache = 10
 )
 
 var (

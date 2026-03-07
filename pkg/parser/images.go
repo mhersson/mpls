@@ -22,7 +22,7 @@ type cachedImage struct {
 var (
 	imageCache      = make(map[string]cachedImage)
 	imageCacheMutex sync.RWMutex
-	maxImageCache   = 50
+	maxImageCache   = 20
 )
 
 // convertHTMLImages processes all <img> tags in HTML, converting local

@@ -23,7 +23,7 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 		var previewURL string
 
 		// Check if browser is already open in single-page mode
-		clientsExist := len(previewserver.GetClients()) > 0
+		clientsExist := previewserver.HasClients()
 
 		if !previewserver.EnableTabs && clientsExist {
 			// SINGLE-PAGE MODE with existing browser: Just update via WebSocket

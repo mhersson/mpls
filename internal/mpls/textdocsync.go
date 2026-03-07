@@ -81,7 +81,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 		}
 	} else {
 		// SINGLE-PAGE MODE: Update existing preview or open at root
-		if len(previewserver.GetClients()) == 0 {
+		if !previewserver.HasClients() {
 			// No browser open yet - open at root
 			previewURL := fmt.Sprintf("http://localhost:%d/", previewServer.Port)
 
@@ -132,10 +132,6 @@ func TextDocumentDidChange(ctx *glsp.Context, params *protocol.DidChangeTextDocu
 		_ = protocol.Trace(ctx, protocol.MessageTypeInfo,
 			log("TextDocumentUriDidChange - loaded new document: "+uri))
 	}
-
-	// Lock document state for mutation
-	docState.Lock()
-	defer docState.Unlock()
 
 	// Get relative path for URI filtering
 	relativePath := documentRegistry.GetRelativePath(uri)
@@ -218,10 +214,6 @@ func TextDocumentDidSave(ctx *glsp.Context, params *protocol.DidSaveTextDocument
 			PlantUMLs: []plantuml.Plantuml{},
 		}
 	}
-
-	// Lock document state for mutation
-	docState.Lock()
-	defer docState.Unlock()
 
 	docState.Content = content
 
