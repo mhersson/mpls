@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -17,9 +19,7 @@ func TestConvertHTMLImages_NoImages(t *testing.T) {
 
 	result := convertHTMLImages(input, "/tmp")
 
-	if result != input {
-		t.Errorf("expected unchanged content\ngot:  %s\nwant: %s", result, input)
-	}
+	assert.Equal(t, input, result)
 }
 
 func TestConvertHTMLImages_ExternalHTTP(t *testing.T) {
@@ -29,9 +29,7 @@ func TestConvertHTMLImages_ExternalHTTP(t *testing.T) {
 
 	result := convertHTMLImages(input, "/tmp")
 
-	if !strings.Contains(result, `src="http://example.com/image.png"`) {
-		t.Error("expected http URL to remain unchanged")
-	}
+	assert.Contains(t, result, `src="http://example.com/image.png"`)
 }
 
 func TestConvertHTMLImages_ExternalHTTPS(t *testing.T) {
@@ -41,9 +39,7 @@ func TestConvertHTMLImages_ExternalHTTPS(t *testing.T) {
 
 	result := convertHTMLImages(input, "/tmp")
 
-	if !strings.Contains(result, `src="https://example.com/image.png"`) {
-		t.Error("expected https URL to remain unchanged")
-	}
+	assert.Contains(t, result, `src="https://example.com/image.png"`)
 }
 
 func TestConvertHTMLImages_DataURI(t *testing.T) {
@@ -53,9 +49,7 @@ func TestConvertHTMLImages_DataURI(t *testing.T) {
 
 	result := convertHTMLImages(input, "/tmp")
 
-	if !strings.Contains(result, `src="data:image/png;base64,iVBORw0KGgo="`) {
-		t.Error("expected data URI to remain unchanged")
-	}
+	assert.Contains(t, result, `src="data:image/png;base64,iVBORw0KGgo="`)
 }
 
 func TestConvertHTMLImages_LocalImage(t *testing.T) {
@@ -78,26 +72,17 @@ func TestConvertHTMLImages_LocalImage(t *testing.T) {
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 
-	if err := os.WriteFile(imgPath, pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
 
 	input := `<img src="test.png" alt="test image">`
 
 	result := convertHTMLImages(input, tmpDir)
 
-	if !strings.Contains(result, "data:image/png;base64,") {
-		t.Error("expected local image to be converted to data URI")
-	}
-
-	if strings.Contains(result, `src="test.png"`) {
-		t.Error("expected src to be replaced with data URI")
-	}
+	assert.Contains(t, result, "data:image/png;base64,")
+	assert.NotContains(t, result, `src="test.png"`)
 
 	// Verify alt attribute is preserved
-	if !strings.Contains(result, `alt="test image"`) {
-		t.Error("expected alt attribute to be preserved")
-	}
+	assert.Contains(t, result, `alt="test image"`)
 }
 
 func TestConvertHTMLImages_NonExistentImage(t *testing.T) {
@@ -108,9 +93,7 @@ func TestConvertHTMLImages_NonExistentImage(t *testing.T) {
 	result := convertHTMLImages(input, "/tmp/nonexistent-dir")
 
 	// Should leave src unchanged when file doesn't exist
-	if !strings.Contains(result, `src="nonexistent.png"`) {
-		t.Error("expected non-existent image src to remain unchanged")
-	}
+	assert.Contains(t, result, `src="nonexistent.png"`)
 }
 
 func TestConvertHTMLImages_MultipleImages(t *testing.T) {
@@ -131,13 +114,8 @@ func TestConvertHTMLImages_MultipleImages(t *testing.T) {
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "img1.png"), pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image 1: %v", err)
-	}
-
-	if err := os.WriteFile(filepath.Join(tmpDir, "img2.png"), pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image 2: %v", err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "img1.png"), pngData, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "img2.png"), pngData, 0o600))
 
 	input := `<p><img src="img1.png" alt="first"></p><p><img src="img2.png" alt="second"></p>`
 
@@ -145,18 +123,11 @@ func TestConvertHTMLImages_MultipleImages(t *testing.T) {
 
 	// Count data URIs
 	dataURICount := strings.Count(result, "data:image/png;base64,")
-	if dataURICount != 2 {
-		t.Errorf("expected 2 data URIs, got %d", dataURICount)
-	}
+	assert.Equal(t, 2, dataURICount)
 
 	// Verify both alt attributes preserved
-	if !strings.Contains(result, `alt="first"`) {
-		t.Error("expected first alt attribute to be preserved")
-	}
-
-	if !strings.Contains(result, `alt="second"`) {
-		t.Error("expected second alt attribute to be preserved")
-	}
+	assert.Contains(t, result, `alt="first"`)
+	assert.Contains(t, result, `alt="second"`)
 }
 
 func TestConvertHTMLImages_MixedSources(t *testing.T) {
@@ -176,28 +147,20 @@ func TestConvertHTMLImages_MixedSources(t *testing.T) {
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "local.png"), pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "local.png"), pngData, 0o600))
 
 	input := `<img src="https://example.com/remote.png"><img src="local.png"><img src="data:image/gif;base64,R0lGODlh">`
 
 	result := convertHTMLImages(input, tmpDir)
 
 	// External should be unchanged
-	if !strings.Contains(result, `src="https://example.com/remote.png"`) {
-		t.Error("expected external URL to remain unchanged")
-	}
+	assert.Contains(t, result, `src="https://example.com/remote.png"`)
 
 	// Local should be converted
-	if strings.Contains(result, `src="local.png"`) {
-		t.Error("expected local image to be converted")
-	}
+	assert.NotContains(t, result, `src="local.png"`)
 
 	// Data URI should be unchanged
-	if !strings.Contains(result, `src="data:image/gif;base64,R0lGODlh"`) {
-		t.Error("expected data URI to remain unchanged")
-	}
+	assert.Contains(t, result, `src="data:image/gif;base64,R0lGODlh"`)
 }
 
 func TestConvertHTMLImages_PreservesOtherTags(t *testing.T) {
@@ -207,9 +170,7 @@ func TestConvertHTMLImages_PreservesOtherTags(t *testing.T) {
 
 	result := convertHTMLImages(input, "/tmp")
 
-	if result != input {
-		t.Errorf("expected other tags to be preserved\ngot:  %s\nwant: %s", result, input)
-	}
+	assert.Equal(t, input, result)
 }
 
 func TestProcessImgTag_NoSrcAttribute(t *testing.T) {
@@ -227,9 +188,7 @@ func TestProcessImgTag_NoSrcAttribute(t *testing.T) {
 	result := processImgTag(token, "/tmp")
 
 	// Should return original token string
-	if !strings.Contains(result, "alt") {
-		t.Error("expected attributes to be preserved")
-	}
+	assert.Contains(t, result, "alt")
 }
 
 func TestProcessImgTag_ExternalURL(t *testing.T) {
@@ -246,9 +205,7 @@ func TestProcessImgTag_ExternalURL(t *testing.T) {
 
 	result := processImgTag(token, "/tmp")
 
-	if !strings.Contains(result, "https://example.com/image.png") {
-		t.Error("expected external URL to be preserved")
-	}
+	assert.Contains(t, result, "https://example.com/image.png")
 }
 
 func TestProcessImgTag_DataURI(t *testing.T) {
@@ -264,9 +221,7 @@ func TestProcessImgTag_DataURI(t *testing.T) {
 
 	result := processImgTag(token, "/tmp")
 
-	if !strings.Contains(result, "data:image/png;base64,abc123") {
-		t.Error("expected data URI to be preserved")
-	}
+	assert.Contains(t, result, "data:image/png;base64,abc123")
 }
 
 func TestProcessImgTag_PreservesAllAttributes(t *testing.T) {
@@ -287,9 +242,7 @@ func TestProcessImgTag_PreservesAllAttributes(t *testing.T) {
 	}
 
 	imgPath := filepath.Join(tmpDir, "test.png")
-	if err := os.WriteFile(imgPath, pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
 
 	token := html.Token{
 		Type: html.StartTagToken,
@@ -306,26 +259,13 @@ func TestProcessImgTag_PreservesAllAttributes(t *testing.T) {
 	result := processImgTag(token, tmpDir)
 
 	// Check all attributes are present
-	if !strings.Contains(result, `alt="test image"`) {
-		t.Error("expected alt attribute to be preserved")
-	}
-
-	if !strings.Contains(result, `class="responsive"`) {
-		t.Error("expected class attribute to be preserved")
-	}
-
-	if !strings.Contains(result, `width="100"`) {
-		t.Error("expected width attribute to be preserved")
-	}
-
-	if !strings.Contains(result, `id="main-image"`) {
-		t.Error("expected id attribute to be preserved")
-	}
+	assert.Contains(t, result, `alt="test image"`)
+	assert.Contains(t, result, `class="responsive"`)
+	assert.Contains(t, result, `width="100"`)
+	assert.Contains(t, result, `id="main-image"`)
 
 	// Check src is converted
-	if !strings.Contains(result, "data:image/png;base64,") {
-		t.Error("expected src to be converted to data URI")
-	}
+	assert.Contains(t, result, "data:image/png;base64,")
 }
 
 func TestGetImageDataURI_ValidImage(t *testing.T) {
@@ -349,46 +289,29 @@ func TestGetImageDataURI_ValidImage(t *testing.T) {
 	}
 
 	imgPath := filepath.Join(tmpDir, "test.png")
-	if err := os.WriteFile(imgPath, pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
 
 	dataURI, err := getImageDataURI(imgPath)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if !strings.HasPrefix(dataURI, "data:image/png;base64,") {
-		t.Errorf("expected PNG data URI prefix, got: %s", dataURI[:50])
-	}
+	assert.True(t, strings.HasPrefix(dataURI, "data:image/png;base64,"))
 
 	// Verify the base64 content can be decoded
 	parts := strings.SplitN(dataURI, ",", 2)
-	if len(parts) != 2 {
-		t.Fatal("expected data URI to have base64 content")
-	}
+	require.Len(t, parts, 2, "expected data URI to have base64 content")
 
 	decoded, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		t.Fatalf("failed to decode base64: %v", err)
-	}
+	require.NoError(t, err)
 
-	if len(decoded) != len(pngData) {
-		t.Errorf("decoded length mismatch: got %d, want %d", len(decoded), len(pngData))
-	}
+	assert.Len(t, decoded, len(pngData))
 }
 
 func TestGetImageDataURI_NonExistent(t *testing.T) {
 	t.Parallel()
 
 	_, err := getImageDataURI("/nonexistent/path/image.png")
-	if err == nil {
-		t.Error("expected error for non-existent file")
-	}
-
-	if !strings.Contains(err.Error(), "cannot stat image") {
-		t.Errorf("expected 'cannot stat image' error, got: %v", err)
-	}
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot stat image")
 }
 
 func TestGetImageDataURI_Caching(t *testing.T) { //nolint:paralleltest // Tests shared cache behavior
@@ -410,25 +333,17 @@ func TestGetImageDataURI_Caching(t *testing.T) { //nolint:paralleltest // Tests 
 	}
 
 	imgPath := filepath.Join(tmpDir, "cached.png")
-	if err := os.WriteFile(imgPath, pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
 
 	// First call - cache miss
 	dataURI1, err := getImageDataURI(imgPath)
-	if err != nil {
-		t.Fatalf("first call failed: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Second call - should use cache
 	dataURI2, err := getImageDataURI(imgPath)
-	if err != nil {
-		t.Fatalf("second call failed: %v", err)
-	}
+	require.NoError(t, err)
 
-	if dataURI1 != dataURI2 {
-		t.Error("expected cached result to match first result")
-	}
+	assert.Equal(t, dataURI1, dataURI2, "expected cached result to match first result")
 }
 
 func TestClearImageCache(t *testing.T) { //nolint:paralleltest // Tests shared cache
@@ -450,24 +365,18 @@ func TestClearImageCache(t *testing.T) { //nolint:paralleltest // Tests shared c
 	}
 
 	imgPath := filepath.Join(tmpDir, "test.png")
-	if err := os.WriteFile(imgPath, pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
 
 	// Populate cache
 	_, err := getImageDataURI(imgPath)
-	if err != nil {
-		t.Fatalf("failed to get data URI: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Clear and verify no panic
 	ClearImageCache()
 
 	// Should work again after clear
 	_, err = getImageDataURI(imgPath)
-	if err != nil {
-		t.Fatalf("failed after cache clear: %v", err)
-	}
+	require.NoError(t, err)
 }
 
 func TestConvertHTMLImages_AbsolutePath(t *testing.T) {
@@ -488,18 +397,14 @@ func TestConvertHTMLImages_AbsolutePath(t *testing.T) {
 	}
 
 	imgPath := filepath.Join(tmpDir, "absolute.png")
-	if err := os.WriteFile(imgPath, pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
 
 	// Use absolute path in src
 	input := `<img src="` + imgPath + `" alt="absolute">`
 
 	result := convertHTMLImages(input, "/different/dir")
 
-	if !strings.Contains(result, "data:image/png;base64,") {
-		t.Error("expected absolute path image to be converted")
-	}
+	assert.Contains(t, result, "data:image/png;base64,")
 }
 
 func TestConvertHTMLImages_SubdirectoryImage(t *testing.T) {
@@ -508,9 +413,7 @@ func TestConvertHTMLImages_SubdirectoryImage(t *testing.T) {
 	tmpDir := t.TempDir()
 	subDir := filepath.Join(tmpDir, "images")
 
-	if err := os.MkdirAll(subDir, 0o750); err != nil {
-		t.Fatalf("failed to create subdirectory: %v", err)
-	}
+	require.NoError(t, os.MkdirAll(subDir, 0o750))
 
 	pngData := []byte{
 		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
@@ -524,17 +427,13 @@ func TestConvertHTMLImages_SubdirectoryImage(t *testing.T) {
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 
-	if err := os.WriteFile(filepath.Join(subDir, "nested.png"), pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, "nested.png"), pngData, 0o600))
 
 	input := `<img src="images/nested.png" alt="nested">`
 
 	result := convertHTMLImages(input, tmpDir)
 
-	if !strings.Contains(result, "data:image/png;base64,") {
-		t.Error("expected subdirectory image to be converted")
-	}
+	assert.Contains(t, result, "data:image/png;base64,")
 }
 
 func TestConvertHTMLImages_SelfClosingTag(t *testing.T) {
@@ -554,16 +453,12 @@ func TestConvertHTMLImages_SelfClosingTag(t *testing.T) {
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 
-	if err := os.WriteFile(filepath.Join(tmpDir, "self.png"), pngData, 0o600); err != nil {
-		t.Fatalf("failed to create test image: %v", err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "self.png"), pngData, 0o600))
 
 	// XHTML-style self-closing tag
 	input := `<img src="self.png" alt="self-closing" />`
 
 	result := convertHTMLImages(input, tmpDir)
 
-	if !strings.Contains(result, "data:image/png;base64,") {
-		t.Error("expected self-closing img tag to be converted")
-	}
+	assert.Contains(t, result, "data:image/png;base64,")
 }

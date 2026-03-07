@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
 )
 
@@ -14,17 +16,10 @@ func TestInsertPlantumlDiagram_NoPlantUML(t *testing.T) {
 	input := `<p>Hello world</p><pre><code class="language-go">func main() {}</code></pre>`
 
 	result, plantumls, err := InsertPlantumlDiagram(input, false, nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if result != input {
-		t.Errorf("expected unchanged content\ngot:  %s\nwant: %s", result, input)
-	}
-
-	if len(plantumls) != 0 {
-		t.Errorf("expected no plantumls, got %d", len(plantumls))
-	}
+	assert.Equal(t, input, result)
+	assert.Empty(t, plantumls)
 }
 
 func TestInsertPlantumlDiagram_NoStartuml(t *testing.T) {
@@ -34,17 +29,10 @@ func TestInsertPlantumlDiagram_NoStartuml(t *testing.T) {
 	input := `<pre><code class="language-plantuml">just some text without startuml</code></pre>`
 
 	result, plantumls, err := InsertPlantumlDiagram(input, false, nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if result != input {
-		t.Errorf("expected unchanged content\ngot:  %s\nwant: %s", result, input)
-	}
-
-	if len(plantumls) != 0 {
-		t.Errorf("expected no plantumls, got %d", len(plantumls))
-	}
+	assert.Equal(t, input, result)
+	assert.Empty(t, plantumls)
 }
 
 func TestInsertPlantumlDiagram_MultipleClasses(t *testing.T) {
@@ -58,18 +46,11 @@ A -> B
 	result, plantumls, err := InsertPlantumlDiagram(input, false, []Plantuml{
 		{EncodedUML: Encode("@startuml\nA -> B\n@enduml"), Diagram: `<img src="diagram1">`},
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := `<img src="diagram1">`
-	if result != expected {
-		t.Errorf("expected diagram replacement\ngot:  %s\nwant: %s", result, expected)
-	}
-
-	if len(plantumls) != 1 {
-		t.Errorf("expected 1 plantuml, got %d", len(plantumls))
-	}
+	assert.Equal(t, expected, result)
+	assert.Len(t, plantumls, 1)
 }
 
 func TestInsertPlantumlDiagram_NestedCodeTag(t *testing.T) {
@@ -87,18 +68,11 @@ A -> B
 	result, plantumls, err := InsertPlantumlDiagram(input, false, []Plantuml{
 		{EncodedUML: Encode(encodedUML), Diagram: `<img src="diagram-with-note">`},
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := `<img src="diagram-with-note">`
-	if result != expected {
-		t.Errorf("expected diagram replacement\ngot:  %s\nwant: %s", result, expected)
-	}
-
-	if len(plantumls) != 1 {
-		t.Errorf("expected 1 plantuml, got %d", len(plantumls))
-	}
+	assert.Equal(t, expected, result)
+	assert.Len(t, plantumls, 1)
 }
 
 func TestInsertPlantumlDiagram_MultipleDiagrams(t *testing.T) {
@@ -117,29 +91,13 @@ C -> D
 		{EncodedUML: Encode("@startuml\nA -> B\n@enduml"), Diagram: `<img src="diagram1">`},
 		{EncodedUML: Encode("@startuml\nC -> D\n@enduml"), Diagram: `<img src="diagram2">`},
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if !strings.Contains(result, `<img src="diagram1">`) {
-		t.Error("expected diagram1 in result")
-	}
-
-	if !strings.Contains(result, `<img src="diagram2">`) {
-		t.Error("expected diagram2 in result")
-	}
-
-	if !strings.Contains(result, "<p>First diagram:</p>") {
-		t.Error("expected first paragraph in result")
-	}
-
-	if !strings.Contains(result, "<p>Second diagram:</p>") {
-		t.Error("expected second paragraph in result")
-	}
-
-	if len(plantumls) != 2 {
-		t.Errorf("expected 2 plantumls, got %d", len(plantumls))
-	}
+	assert.Contains(t, result, `<img src="diagram1">`)
+	assert.Contains(t, result, `<img src="diagram2">`)
+	assert.Contains(t, result, "<p>First diagram:</p>")
+	assert.Contains(t, result, "<p>Second diagram:</p>")
+	assert.Len(t, plantumls, 2)
 }
 
 func TestInsertPlantumlDiagram_MixedCodeBlocks(t *testing.T) {
@@ -155,28 +113,18 @@ A -> B
 	result, plantumls, err := InsertPlantumlDiagram(input, false, []Plantuml{
 		{EncodedUML: Encode("@startuml\nA -> B\n@enduml"), Diagram: `<img src="diagram1">`},
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	// Go code block should be preserved
-	if !strings.Contains(result, `<pre><code class="language-go">func main() {}</code></pre>`) {
-		t.Error("expected Go code block to be preserved")
-	}
+	assert.Contains(t, result, `<pre><code class="language-go">func main() {}</code></pre>`)
 
 	// PlantUML should be replaced
-	if !strings.Contains(result, `<img src="diagram1">`) {
-		t.Error("expected PlantUML to be replaced with diagram")
-	}
+	assert.Contains(t, result, `<img src="diagram1">`)
 
 	// Python code block should be preserved
-	if !strings.Contains(result, `<pre><code class="language-python">print("hello")</code></pre>`) {
-		t.Error("expected Python code block to be preserved")
-	}
+	assert.Contains(t, result, `<pre><code class="language-python">print("hello")</code></pre>`)
 
-	if len(plantumls) != 1 {
-		t.Errorf("expected 1 plantuml, got %d", len(plantumls))
-	}
+	assert.Len(t, plantumls, 1)
 }
 
 func TestInsertPlantumlDiagram_HTMLEntities(t *testing.T) {
@@ -192,18 +140,11 @@ A -&gt; B : &quot;message&quot;
 	result, plantumls, err := InsertPlantumlDiagram(input, false, []Plantuml{
 		{EncodedUML: Encode(expectedUML), Diagram: `<img src="diagram1">`},
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	expected := `<img src="diagram1">`
-	if result != expected {
-		t.Errorf("expected diagram replacement\ngot:  %s\nwant: %s", result, expected)
-	}
-
-	if len(plantumls) != 1 {
-		t.Errorf("expected 1 plantuml, got %d", len(plantumls))
-	}
+	assert.Equal(t, expected, result)
+	assert.Len(t, plantumls, 1)
 }
 
 func TestHasLanguagePlantuml(t *testing.T) {
@@ -230,9 +171,7 @@ func TestHasLanguagePlantuml(t *testing.T) {
 			attrs := []html.Attribute{{Key: "class", Val: tt.classes}}
 
 			result := hasLanguagePlantuml(attrs)
-			if result != tt.expected {
-				t.Errorf("hasLanguagePlantuml(%q) = %v, want %v", tt.classes, result, tt.expected)
-			}
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -241,9 +180,7 @@ func TestHasLanguagePlantuml_NoClassAttr(t *testing.T) {
 	t.Parallel()
 
 	attrs := []html.Attribute{{Key: "id", Val: "some-id"}}
-	if hasLanguagePlantuml(attrs) {
-		t.Error("expected false when no class attribute")
-	}
+	assert.False(t, hasLanguagePlantuml(attrs))
 }
 
 func TestEncode(t *testing.T) {
@@ -254,14 +191,8 @@ func TestEncode(t *testing.T) {
 	encoded1 := Encode(uml)
 	encoded2 := Encode(uml)
 
-	if encoded1 != encoded2 {
-		t.Errorf("encoding should be deterministic, got %s and %s", encoded1, encoded2)
-	}
-
-	// Should produce non-empty output
-	if encoded1 == "" {
-		t.Error("encoded string should not be empty")
-	}
+	assert.Equal(t, encoded1, encoded2, "encoding should be deterministic")
+	assert.NotEmpty(t, encoded1, "encoded string should not be empty")
 }
 
 func TestHasLanguagePlantuml_MultipleAttrs(t *testing.T) {
@@ -273,9 +204,7 @@ func TestHasLanguagePlantuml_MultipleAttrs(t *testing.T) {
 		{Key: "data-line", Val: "1"},
 	}
 
-	if !hasLanguagePlantuml(attrs) {
-		t.Error("expected true when class attribute contains language-plantuml")
-	}
+	assert.True(t, hasLanguagePlantuml(attrs))
 }
 
 // Test that slices.Contains works as expected for the hasLanguagePlantuml helper.
@@ -283,11 +212,6 @@ func TestSlicesContains(t *testing.T) {
 	t.Parallel()
 
 	classes := strings.Fields("highlight language-plantuml line-numbers")
-	if !slices.Contains(classes, "language-plantuml") {
-		t.Error("expected slices.Contains to find language-plantuml")
-	}
-
-	if slices.Contains(classes, "language-plantuml-extra") {
-		t.Error("expected slices.Contains to not find partial match")
-	}
+	assert.True(t, slices.Contains(classes, "language-plantuml"))
+	assert.False(t, slices.Contains(classes, "language-plantuml-extra"))
 }
