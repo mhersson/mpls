@@ -77,6 +77,8 @@ rendering experience:
 - Syntax highlighting: The
   [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
   syntax-highlighting to the fenced code blocks.
+- GitHub-style Alerts: Built-in support for `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
+  `[!WARNING]`, and `[!CAUTION]` blockquotes, rendered as styled alert boxes.
 
 **Optional**
 
