@@ -259,12 +259,8 @@ The following options can be used when starting `mpls`:
    With `--tabs`, each file opens in its own browser tab with a unique URL. In
    single-page mode, link clicks update the preview; in multi-tab mode, they
    open new tabs.
-5. Built-in themes include: `catppuccin-mocha`, `catppuccin-frappe`,
-   `catppuccin-macchiato`, `catppuccin-latte`, `tokyonight`, `tokyonight-storm`,
-   `tokyonight-moon`, `tokyonight-day`, `gruvbox-dark`, `gruvbox-light`,
-   `solarized-dark`, `solarized-light`, `nord`, `dracula`, `rose-pine`,
-   `ayu-dark`, `ayu-light`, `everforest-dark`, and more. Use `--list-themes` to
-   see all available themes. Default theme is `light`.
+5. See the [theme gallery](screenshots/themes/README.md) for screenshots of all
+   available themes, or use `--list-themes` to list them. Default is `light`.
 
 ## Configuration examples
 

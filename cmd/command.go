@@ -94,17 +94,20 @@ func Execute() {
 }
 
 func init() {
-	command.Flags().StringVar(&previewserver.Browser, "browser", "", "Specify the web browser to use for the preview")
+	// Persistent flags available to all subcommands
+	command.PersistentFlags().StringVar(&previewserver.Browser, "browser", "", "Specify the web browser to use for the preview")
+	command.PersistentFlags().StringVar(&previewserver.Theme, "theme", "light", "Set the preview theme (light, dark, or any of the provided themes)")
+	command.PersistentFlags().IntVar(&previewserver.FixedPort, "port", 0, "Set a fixed port for the preview server")
+
+	// Local flags for main LSP command only
 	command.Flags().StringVar(&parser.CodeHighlightingStyle, "code-style", "catppuccin-mocha", "Higlighting style for code blocks")
 	command.Flags().BoolVar(&darkMode, "dark-mode", false, "Enable dark mode (deprecated: use --theme dark instead)")
 	command.Flags().BoolVar(&listThemes, "list-themes", false, "List all available themes and exit")
-	command.Flags().StringVar(&previewserver.Theme, "theme", "light", "Set the preview theme (light, dark, or any of the provided themes)")
 	command.Flags().BoolVar(&parser.EnableEmoji, "enable-emoji", false, "Enable emoji support")
 	command.Flags().BoolVar(&parser.EnableFootnotes, "enable-footnotes", false, "Enable footnotes")
 	command.Flags().BoolVar(&parser.EnableWikiLinks, "enable-wikilinks", false, "Enable [[wiki]] style links")
 	command.Flags().BoolVar(&mpls.TextDocumentUseFullSync, "full-sync", false, "Sync entire document for every change")
 	command.Flags().BoolVar(&noAuto, "no-auto", false, "Don't open preview automatically")
-	command.Flags().IntVar(&previewserver.FixedPort, "port", 0, "Set a fixed port for the preview server")
 	command.Flags().StringVar(&plantuml.BasePath, "plantuml-path", "plantuml", "Specify the base path for the plantuml server")
 	command.Flags().StringVar(&plantuml.Server, "plantuml-server", "www.plantuml.com", "Specify the host for the plantuml server")
 	command.Flags().BoolVar(&plantuml.DisableTLS, "plantuml-disable-tls", false, "Disable encryption on requests to the plantuml server")
@@ -112,4 +115,7 @@ func init() {
 
 	// Mark deprecated flags
 	_ = command.Flags().MarkDeprecated("dark-mode", "use --theme dark instead")
+
+	// Add subcommands
+	command.AddCommand(demoCmd)
 }
