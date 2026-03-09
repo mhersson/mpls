@@ -49,8 +49,7 @@ available at
 - **Presentation Mode**: Automatically transform your markdown into a slideshow
   presentation, or use explicit markers for full control over slide boundaries
   and layout.
-  - Read more in the
-    [presentation mode documentation](docs/presentation-mode.md)
+  - Read more in the [presentation mode documentation](presentation-mode.md)
 
 ### Built with Goldmark
 
