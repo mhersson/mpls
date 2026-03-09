@@ -2,23 +2,27 @@
 /* Based on the Ayu theme by André Sá */
 /* URL: https://github.com/dempfi/ayu */
 :root {
-  --text-color: #5c6166;
-  --background-color: #fafafa;
-  --border-color: #d8d8d7;
-  --code-background-color: #e7eaed;
-  --table-header-background: #e7eaed;
-  --even-row-background: #fcfcfc;
-  --blockquote-color: #828c9a;
-  --blockquote-background: #e7eaed;
-  --blockquote-border-color: #86b300;
-  --link-color: #399ee6;
-  --link-visited-color: #a37acc;
-  --link-hover-color: #55b4d4;
-  --modal-background-color: rgba(250, 250, 250, 0.95);
-  --modal-close-color: #5c6166;
-  --alert-note-color: #399ee6;
-  --alert-tip-color: #86b300;
-  --alert-important-color: #a37acc;
-  --alert-warning-color: #f2ae49;
-  --alert-caution-color: #e65050;
+    --text-color: #5c6166;
+    --background-color: #fafafa;
+    --border-color: #d8d8d7;
+    --code-background-color: #e7eaed;
+    --table-header-background: #e7eaed;
+    --even-row-background: #fcfcfc;
+    --blockquote-color: #828c9a;
+    --blockquote-background: #e7eaed;
+    --blockquote-border-color: #86b300;
+    --link-color: #399ee6;
+    --link-visited-color: #a37acc;
+    --link-hover-color: #55b4d4;
+    --modal-background-color: rgba(250, 250, 250, 0.95);
+    --modal-close-color: #5c6166;
+    --alert-note-color: #399ee6;
+    --alert-tip-color: #86b300;
+    --alert-important-color: #a37acc;
+    --alert-warning-color: #f2ae49;
+    --alert-caution-color: #e65050;
+    --heading-h1-color: #399ee6;
+    --heading-h2-color: #f2ae49;
+    --heading-h3-color: #f07171;
+    --heading-bold-color: #fa8d3e;
 }

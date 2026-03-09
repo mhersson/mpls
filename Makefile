@@ -54,6 +54,9 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet
 	go vet ./...
 
+lint: fmt vet ## Run golangci-lint
+	golangci-lint run
+
 build: fmt vet ## Build the binary.
 	@go build -ldflags $(LDFLAGS) .
 

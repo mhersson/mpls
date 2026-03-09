@@ -6,6 +6,7 @@
         <link rel="stylesheet" href="/%s" />
         <link rel="stylesheet" href="/styles.css" />
         <link rel="stylesheet" href="/katex.min.css" />
+        <link rel="stylesheet" href="/presentation.css" />
         <title></title>
     </head>
     <body>
@@ -21,6 +22,10 @@
                         <label id="disable-scrolling-checkbox-label">
                             <input type="checkbox" id="disable-scrolling" />
                             Disable Scroll To Edit
+                        </label>
+                        <label id="presentation-checkbox-label">
+                            <input type="checkbox" id="presentation-mode" />
+                            Presentation
                         </label>
                     </div>
                 </div>
@@ -38,5 +43,6 @@
             mermaid.initialize({ startonload: false, theme: "%s" });
         </script>
         <script src="/ws.js"></script>
+        <script src="/presentation.js"></script>
     </body>
 </html>

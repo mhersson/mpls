@@ -22,8 +22,9 @@ preview feature that works alongside these editors. Additionally, `mpls` is
 compatible with any editor that supports the Language Server Protocol (LSP),
 making it a versatile tool for Markdown editing across various platforms. For
 users of Visual Studio Code and Zed, there are also dedicated extensions
-available at [mpls-vscode-client](https://github.com/mhersson/mpls-vscode-client)
-and [mpls for Zed](https://zed.dev/extensions/mpls),
+available at
+[mpls-vscode-client](https://github.com/mhersson/mpls-vscode-client) and
+[mpls for Zed](https://zed.dev/extensions/mpls),
 
 ![demo](screenshots/demo.gif)
 
@@ -45,6 +46,10 @@ and [mpls for Zed](https://zed.dev/extensions/mpls),
     perfect for focused editing.
   - **Multi-tab mode** (`--tabs`): Each file opens in its own browser tab for
     side-by-side viewing.
+- **Presentation Mode**: Automatically transform your markdown into a slideshow
+  presentation, or use explicit markers for full control over slide boundaries
+  and layout.
+  - Read more in the [presentation mode documentation](presentation-mode.md)
 
 ### Built with Goldmark
 
@@ -61,9 +66,6 @@ rendering experience:
 
 - Github Flavored Markdown: Goldmark's built in GFM extension ensures Table,
   Strikethrough, Linkify and TaskList elements are displayed correctly.
-- Image Rendering: The [img64](https://github.com/tenkoh/goldmark-img64)
-  extension allows for seamless integration of images within your Markdown
-  files.
 - Math Rendering: The [katex](https://github.com/FurqanSoftware/goldmark-katex)
   extension enables the rendering of LaTeX-style mathematical expressions using
   KaTeX. _Please note that the KaTeX extension requires `cgo` and will only be
@@ -74,6 +76,8 @@ rendering experience:
 - Syntax highlighting: The
   [highlighting](https://github.com/yuin/goldmark-highlighting) extension adds
   syntax-highlighting to the fenced code blocks.
+- GitHub-style Alerts: Built-in support for `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
+  `[!WARNING]`, and `[!CAUTION]` blockquotes, rendered as styled alert boxes.
 
 **Optional**
 
@@ -256,12 +260,8 @@ The following options can be used when starting `mpls`:
    With `--tabs`, each file opens in its own browser tab with a unique URL. In
    single-page mode, link clicks update the preview; in multi-tab mode, they
    open new tabs.
-5. Built-in themes include: `catppuccin-mocha`, `catppuccin-frappe`,
-   `catppuccin-macchiato`, `catppuccin-latte`, `tokyonight`, `tokyonight-storm`,
-   `tokyonight-moon`, `tokyonight-day`, `gruvbox-dark`, `gruvbox-light`,
-   `solarized-dark`, `solarized-light`, `nord`, `dracula`, `rose-pine`,
-   `ayu-dark`, `ayu-light`, `everforest-dark`, and more. Use `--list-themes` to
-   see all available themes. Default theme is `light`.
+5. See the [theme gallery](screenshots/themes/README.md) for screenshots of all
+   available themes, or use `--list-themes` to list them. Default is `light`.
 
 ## Configuration examples
 

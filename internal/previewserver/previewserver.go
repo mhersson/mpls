@@ -35,6 +35,12 @@ var (
 	OpenBrowserOnStartup bool
 	EnableTabs           bool
 
+	// Current content state for single-page mode.
+	currentHTML  string
+	currentTitle string
+	currentMeta  string
+	contentMutex sync.RWMutex
+
 	//go:embed web/index.html
 	indexHTML string
 	//go:embed web/katex.min.css
@@ -45,16 +51,20 @@ var (
 	mermaid string
 	//go:embed web/ws.js
 	websocketJS string
+	//go:embed web/presentation.js
+	presentationJS string
+	//go:embed web/presentation.css
+	presentationCSS string
 	//go:embed web/fonts
 	katexFontsFS embed.FS
 	//go:embed web/themes
 	themesFS embed.FS
 
-	broadcast      = make(chan []byte)
-	clients        = make(map[*websocket.Conn]bool)
-	clientsMutex   sync.RWMutex
-	stopChan       = make(chan os.Signal, 1)
-	LSPRequestChan = make(chan OpenDocumentRequest)
+	clients         []*websocket.Conn
+	clientsMutex    sync.Mutex
+	clientConnected = make(chan struct{}, 1)
+	stopChan        = make(chan os.Signal, 1)
+	LSPRequestChan  = make(chan OpenDocumentRequest)
 )
 
 type OpenDocumentRequest struct {
@@ -68,7 +78,6 @@ type Server struct {
 	InitialContent string
 	Port           int
 	WorkspaceRoot  string
-	mutex          sync.RWMutex
 }
 
 func logTime() string {
@@ -96,39 +105,39 @@ func ListThemes() {
 }
 
 func WaitForClients(timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for clients to connect")
-		case <-ticker.C:
-			clientsMutex.RLock()
-			hasClients := len(clients) > 0
-			clientsMutex.RUnlock()
-
-			if hasClients {
-				return nil
-			}
-		}
+	select {
+	case <-clientConnected:
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("timeout waiting for clients to connect")
 	}
 }
 
-// GetClients returns a slice of all currently connected WebSocket clients.
-func GetClients() []*websocket.Conn {
-	clientsMutex.RLock()
-	defer clientsMutex.RUnlock()
+// HasClients returns true if any WebSocket clients are connected.
+func HasClients() bool {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
 
-	result := make([]*websocket.Conn, 0, len(clients))
-	for client := range clients {
-		result = append(result, client)
+	return len(clients) > 0
+}
+
+// broadcastToClients sends a message to all connected clients, removing any that fail.
+func broadcastToClients(msg []byte) {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
+
+	alive := clients[:0]
+	for _, c := range clients {
+		if err := c.WriteMessage(websocket.TextMessage, msg); err != nil {
+			fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
+
+			_ = c.Close()
+		} else {
+			alive = append(alive, c)
+		}
 	}
 
-	return result
+	clients = alive
 }
 
 // GetChromaStyleForTheme returns a recommended chroma syntax highlighting style for a given theme.
@@ -218,15 +227,10 @@ func New() *Server {
 }
 
 func (s *Server) SetWorkspaceRoot(root string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	s.WorkspaceRoot = root
 }
 
 func (s *Server) GetWorkspaceRoot() string {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-
 	return s.WorkspaceRoot
 }
 
@@ -237,6 +241,8 @@ func isStaticAsset(path string) bool {
 		"/mermaid.min.js",
 		"/ws.js",
 		"/ws",
+		"/presentation.js",
+		"/presentation.css",
 	}
 
 	if slices.Contains(staticPaths, path) {
@@ -259,7 +265,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	// If no workspace root, serve the initial content
 	if workspaceRoot == "" {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(s.InitialContent))
+		_, _ = w.Write([]byte(s.InitialContent))
 
 		return
 	}
@@ -300,7 +306,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load file content
-	content, err := os.ReadFile(absolutePath)
+	content, err := os.ReadFile(absolutePath) //nolint:gosec // Path validated above: traversal check + workspace boundary check
 	if err != nil {
 		http.Error(w, "File not found", http.StatusNotFound)
 
@@ -309,7 +315,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 
 	// Render HTML
 	fileURI := "file://" + absolutePath
-	renderedHTML, meta := parser.HTML(string(content), fileURI)
+	renderedHTML, meta := parser.HTML(string(content), fileURI, 0)
 
 	// Process PlantUML diagrams
 	renderedHTML, _, err = plantuml.InsertPlantumlDiagram(renderedHTML, true, []plantuml.Plantuml{})
@@ -322,6 +328,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	metaJSON, _ := json.Marshal(meta)
 
 	var metaMap map[string]any
+
 	_ = json.Unmarshal(metaJSON, &metaMap)
 
 	metaHTML := ""
@@ -345,7 +352,7 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf(`<summary id="header-summary">%s</summary>`, filepath.Base(absolutePath)), 1)
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(fullHTML))
+	_, _ = w.Write([]byte(fullHTML)) //nolint:gosec
 }
 
 func (s *Server) Start() {
@@ -354,6 +361,8 @@ func (s *Server) Start() {
 	http.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
 	http.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
 	http.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
+	http.HandleFunc("/presentation.js", handleResponse("application/javascript", presentationJS))
+	http.HandleFunc("/presentation.css", handleResponse("text/css", presentationCSS))
 
 	// Serve embedded KaTeX fonts
 	fontsSubFS, _ := fs.Sub(katexFontsFS, "web/fonts")
@@ -372,7 +381,7 @@ func (s *Server) Start() {
 		// Root path - serve initial content
 		if path == "/" || path == "" {
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(s.InitialContent))
+			_, _ = w.Write([]byte(s.InitialContent))
 
 			return
 		}
@@ -390,8 +399,6 @@ func (s *Server) Start() {
 	})
 
 	signal.Notify(stopChan, os.Interrupt)
-
-	go handleMessages()
 
 	go func() {
 		if err := s.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -431,21 +438,7 @@ func (s *Server) CloseDocument(documentURI string, isLastDocument bool) {
 		return
 	}
 
-	// Broadcast directly to connected clients
-	clientsMutex.RLock()
-
-	clientList := make([]*websocket.Conn, 0, len(clients))
-	for client := range clients {
-		clientList = append(clientList, client)
-	}
-	clientsMutex.RUnlock()
-
-	// Send to all clients without holding the lock
-	for _, client := range clientList {
-		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
-			fmt.Fprintf(os.Stderr, "%s error sending close message: %v\n", logTime(), err)
-		}
-	}
+	broadcastToClients(eventJSON)
 }
 
 // UpdateWithURI updates the current HTML content with document URI for client filtering.
@@ -462,6 +455,15 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 
 	e := Event{HTML: newContent, Title: t, Meta: m, DocumentURI: documentURI}
 
+	// Store current content for single-page mode (when no documentURI filtering)
+	if !EnableTabs {
+		contentMutex.Lock()
+		currentHTML = newContent
+		currentTitle = t
+		currentMeta = m
+		contentMutex.Unlock()
+	}
+
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marshaling event to JSON: %v\n", err)
@@ -469,21 +471,7 @@ func (s *Server) UpdateWithURI(filename, documentURI string, newContent string, 
 		return
 	}
 
-	// Broadcast directly to connected clients
-	clientsMutex.RLock()
-
-	clientList := make([]*websocket.Conn, 0, len(clients))
-	for client := range clients {
-		clientList = append(clientList, client)
-	}
-	clientsMutex.RUnlock()
-
-	// Send to all clients without holding the lock
-	for _, client := range clientList {
-		if err := client.WriteMessage(websocket.TextMessage, eventJSON); err != nil {
-			fmt.Fprintf(os.Stderr, "%s error sending message: %v\n", logTime(), err)
-		}
-	}
+	broadcastToClients(eventJSON)
 }
 
 // Stop gracefully shuts down the server.
@@ -520,18 +508,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer func() {
-		conn.Close()
-		clientsMutex.Lock()
-		delete(clients, conn)
-		clientsMutex.Unlock()
-	}()
-
-	clientsMutex.Lock()
-	clients[conn] = true
-	clientsMutex.Unlock()
-
-	// Send initial config synchronously with error handling
+	// Send initial messages BEFORE adding to clients slice to avoid
+	// concurrent writes with broadcastToClients
 	configMsg := map[string]any{
 		"Type":       "config",
 		"EnableTabs": EnableTabs,
@@ -541,6 +519,56 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(os.Stderr, "%s error sending config: %v\n", logTime(), err)
 		}
 	}
+
+	// In single-page mode, send current content to newly connected client
+	if !EnableTabs {
+		contentMutex.RLock()
+
+		if currentHTML != "" {
+			contentMsg := map[string]any{
+				"HTML":        currentHTML,
+				"Title":       currentTitle,
+				"Meta":        currentMeta,
+				"DocumentURI": "",
+			}
+			if msgJSON, err := json.Marshal(contentMsg); err == nil {
+				if err := conn.WriteMessage(websocket.TextMessage, msgJSON); err != nil {
+					fmt.Fprintf(os.Stderr, "%s error sending current content: %v\n", logTime(), err)
+				}
+			}
+		}
+
+		contentMutex.RUnlock()
+	}
+
+	// Add client to list AFTER initial messages are sent
+	clientsMutex.Lock()
+	wasEmpty := len(clients) == 0
+	clients = append(clients, conn)
+	clientsMutex.Unlock()
+
+	// Signal first client connected
+	if wasEmpty {
+		select {
+		case clientConnected <- struct{}{}:
+		default:
+		}
+	}
+
+	defer func() {
+		_ = conn.Close()
+
+		// Remove client from slice
+		clientsMutex.Lock()
+		for i, c := range clients {
+			if c == conn {
+				clients = append(clients[:i], clients[i+1:]...)
+
+				break
+			}
+		}
+		clientsMutex.Unlock()
+	}()
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -562,8 +590,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		if err := json.Unmarshal(msg, &incomingMsg); err == nil {
 			// Handle different message types
-			switch incomingMsg.Type {
-			case "openDocument":
+			if incomingMsg.Type == "openDocument" {
 				// Send to LSP request channel
 				LSPRequestChan <- OpenDocumentRequest{
 					URI:           incomingMsg.URI,
@@ -575,46 +602,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Not a recognized request type, broadcast it (for backward compatibility)
-		broadcast <- msg
-	}
-}
-
-func handleMessages() {
-	for {
-		msg := <-broadcast
-
-		// Create snapshot of clients with read lock
-		clientsMutex.RLock()
-
-		clientList := make([]*websocket.Conn, 0, len(clients))
-		for client := range clients {
-			clientList = append(clientList, client)
-		}
-		clientsMutex.RUnlock()
-
-		// Send to clients without holding the lock
-		var failedClients []*websocket.Conn
-
-		for _, client := range clientList {
-			if err := client.WriteMessage(websocket.TextMessage, msg); err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					fmt.Fprintf(os.Stderr, "%s error while writing message: %v\n", logTime(), err)
-
-					failedClients = append(failedClients, client)
-				}
-			}
-		}
-
-		// Clean up failed clients with write lock
-		if len(failedClients) > 0 {
-			clientsMutex.Lock()
-			for _, client := range failedClients {
-				client.Close()
-				delete(clients, client)
-			}
-			clientsMutex.Unlock()
-		}
+		// Unknown message types are ignored (no broadcast needed)
 	}
 }
 
@@ -628,12 +616,12 @@ func Openbrowser(url, browser string) error {
 			browserCommand = browser
 		}
 
-		err = exec.Command(browserCommand, url).Start()
+		err = exec.Command(browserCommand, url).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 	case "windows":
 		if browser != "" {
-			err = exec.Command(browser, url).Start()
+			err = exec.Command(browser, url).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 		} else {
-			err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+			err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 		}
 	case "darwin":
 		openArgs := []string{"-g", url}
@@ -641,7 +629,7 @@ func Openbrowser(url, browser string) error {
 			openArgs = append(openArgs[:1], "-a", browser, url)
 		}
 
-		err = exec.Command("open", openArgs...).Start()
+		err = exec.Command("open", openArgs...).Start() //nolint:gosec,noctx // Intentional: fire-and-forget browser launch
 	}
 
 	if err != nil {

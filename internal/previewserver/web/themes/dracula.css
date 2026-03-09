@@ -2,23 +2,27 @@
 /* Based on the Dracula theme by Zeno Rocha */
 /* URL: https://draculatheme.com */
 :root {
-  --text-color: #f8f8f2;
-  --background-color: #282A36;
-  --border-color: #44475a;
-  --code-background-color: #191A21;
-  --table-header-background: #191A21;
-  --even-row-background: #222430;
-  --blockquote-color: #6272A4;
-  --blockquote-background: #191A21;
-  --blockquote-border-color: #50fa7b;
-  --link-color: #8be9fd;
-  --link-visited-color: #BD93F9;
-  --link-hover-color: #ff79c6;
-  --modal-background-color: rgba(40, 42, 54, 0.95);
-  --modal-close-color: #f8f8f2;
-  --alert-note-color: #8be9fd;
-  --alert-tip-color: #50fa7b;
-  --alert-important-color: #bd93f9;
-  --alert-warning-color: #f1fa8c;
-  --alert-caution-color: #ff5555;
+    --text-color: #f8f8f2;
+    --background-color: #282a36;
+    --border-color: #44475a;
+    --code-background-color: #191a21;
+    --table-header-background: #191a21;
+    --even-row-background: #222430;
+    --blockquote-color: #6272a4;
+    --blockquote-background: #191a21;
+    --blockquote-border-color: #50fa7b;
+    --link-color: #8be9fd;
+    --link-visited-color: #bd93f9;
+    --link-hover-color: #ff79c6;
+    --modal-background-color: rgba(40, 42, 54, 0.95);
+    --modal-close-color: #f8f8f2;
+    --alert-note-color: #8be9fd;
+    --alert-tip-color: #50fa7b;
+    --alert-important-color: #bd93f9;
+    --alert-warning-color: #f1fa8c;
+    --alert-caution-color: #ff5555;
+    --heading-h1-color: #8be9fd;
+    --heading-h2-color: #f1fa8c;
+    --heading-h3-color: #ff5555;
+    --heading-bold-color: #ffb86c;
 }

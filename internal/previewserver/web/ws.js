@@ -115,33 +115,34 @@ document.addEventListener("DOMContentLoaded", () => {
       return Promise.resolve();
     }
 
-    // Store pre-render scroll position
     const scrollBefore = window.scrollY;
 
-    try {
-      // Mark elements as rendering
-      mermaidElements.forEach((el) => {
-        el.setAttribute("data-rendering", "true");
-      });
+    for (const el of mermaidElements) {
+      if (el.querySelector("svg")) continue; // Already rendered
 
-      await window.mermaid.run({
-        querySelector: ".language-mermaid",
-      });
-
-      // Remove rendering markers
-      mermaidElements.forEach((el) => {
+      el.setAttribute("data-rendering", "true");
+      try {
+        await window.mermaid.run({ nodes: [el] });
+      } catch (error) {
+        console.error("Mermaid diagram failed:", error);
+        const errDiv = document.createElement("div");
+        errDiv.className = "mermaid-error";
+        errDiv.style.cssText = "color:red;border:1px solid red;padding:8px";
+        errDiv.innerHTML = `<strong>Mermaid Error:</strong><pre>${escapeHtml(error.message || String(error))}</pre>`;
+        el.innerHTML = "";
+        el.appendChild(errDiv);
+      } finally {
         el.removeAttribute("data-rendering");
-      });
-
-      // Return scroll adjustment needed
-      return window.scrollY - scrollBefore;
-    } catch (error) {
-      console.error("Mermaid rendering failed:", error);
-      mermaidElements.forEach((el) => {
-        el.removeAttribute("data-rendering");
-      });
-      return 0;
+      }
     }
+
+    return window.scrollY - scrollBefore;
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   // Improved scroll functionality
@@ -280,6 +281,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Update content
       updateContent(renderedHtml);
+
+      // Notify presentation module of content update
+      if (window.presentation) {
+        window.presentation.onContentUpdate(renderedHtml);
+      }
 
       // Render and scroll
       await renderMermaidAndScroll(titleChanged);

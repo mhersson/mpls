@@ -2,23 +2,27 @@
 /* Based on the Catppuccin theme */
 /* URL: https://github.com/catppuccin/catppuccin */
 :root {
-  --text-color: #cad3f5;
-  --background-color: #24273a;
-  --border-color: #494d64;
-  --code-background-color: #1e2030;
-  --table-header-background: #1e2030;
-  --even-row-background: #181926;
-  --blockquote-color: #939ab7;
-  --blockquote-background: #1e2030;
-  --blockquote-border-color: #a6da95;
-  --link-color: #8aadf4;
-  --link-visited-color: #c6a0f6;
-  --link-hover-color: #8bd5ca;
-  --modal-background-color: rgba(36, 39, 58, 0.95);
-  --modal-close-color: #cad3f5;
-  --alert-note-color: #8aadf4;
-  --alert-tip-color: #a6da95;
-  --alert-important-color: #c6a0f6;
-  --alert-warning-color: #eed49f;
-  --alert-caution-color: #ed8796;
+    --text-color: #cad3f5;
+    --background-color: #24273a;
+    --border-color: #494d64;
+    --code-background-color: #1e2030;
+    --table-header-background: #1e2030;
+    --even-row-background: #181926;
+    --blockquote-color: #939ab7;
+    --blockquote-background: #1e2030;
+    --blockquote-border-color: #a6da95;
+    --link-color: #8aadf4;
+    --link-visited-color: #c6a0f6;
+    --link-hover-color: #8bd5ca;
+    --modal-background-color: rgba(36, 39, 58, 0.95);
+    --modal-close-color: #cad3f5;
+    --alert-note-color: #8aadf4;
+    --alert-tip-color: #a6da95;
+    --alert-important-color: #c6a0f6;
+    --alert-warning-color: #eed49f;
+    --alert-caution-color: #ed8796;
+    --heading-h1-color: #8aadf4;
+    --heading-h2-color: #eed49f;
+    --heading-h3-color: #ed8796;
+    --heading-bold-color: #f5a97f;
 }

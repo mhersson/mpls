@@ -7,9 +7,10 @@ import (
 	"net/url"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 
-	img64 "github.com/tenkoh/goldmark-img64"
 	"github.com/yuin/goldmark"
 	emoji "github.com/yuin/goldmark-emoji"
 	meta "github.com/yuin/goldmark-meta"
@@ -22,27 +23,59 @@ import (
 	"go.abhg.dev/goldmark/wikilink"
 )
 
-const ScrollAnchor = "mpls-scroll-anchor"
+const (
+	ScrollAnchor       = "mpls-scroll-anchor"
+	maxDocContentCache = 10
+)
 
 var (
 	oldDocContentByURI    map[string]map[string]string // URI -> content map
+	oldDocContentMutex    sync.RWMutex                 // Protects oldDocContentByURI
 	CodeHighlightingStyle string
 	EnableWikiLinks       bool
 	WorkspaceRoot         string
 
 	EnableFootnotes bool
 	EnableEmoji     bool
+
+	// Cached goldmark extensions (initialized once at first use).
+	cachedExtensions []goldmark.Extender
+	extensionsOnce   sync.Once
 )
+
+// getExtensions returns the cached goldmark extensions.
+// Extensions are initialized once on first call since config is set at startup
+// and never changes during runtime.
+func getExtensions() []goldmark.Extender {
+	extensionsOnce.Do(func() {
+		cachedExtensions = defaultExtensions()
+		if EnableWikiLinks {
+			cachedExtensions = append(cachedExtensions, &wikilink.Extender{})
+		}
+
+		if EnableFootnotes {
+			cachedExtensions = append(cachedExtensions, extension.Footnote)
+		}
+
+		if EnableEmoji {
+			cachedExtensions = append(cachedExtensions, emoji.Emoji)
+		}
+	})
+
+	return cachedExtensions
+}
 
 func getDocDir(uri string) string {
 	return filepath.Dir(NormalizePath(uri))
 }
 
 func NormalizePath(uri string) string {
-	f := strings.TrimPrefix(uri, "file://")
-
+	// Windows uses file:/// (3 slashes), Unix uses file:// (2 slashes)
+	var f string
 	if runtime.GOOS == "windows" {
 		f = strings.TrimPrefix(uri, "file:///")
+	} else {
+		f = strings.TrimPrefix(uri, "file://")
 	}
 
 	decoded, err := url.PathUnescape(f)
@@ -59,24 +92,139 @@ func NormalizePath(uri string) string {
 
 type ScrollIDTransformer struct {
 	currentURI string
+	changeLine int // Source line where change occurred (1-based, 0 = use content diff)
+}
+
+// buildLineIndex pre-computes line start offsets for fast lookups.
+// Returns slice where index i contains the byte offset where line i+1 starts.
+func buildLineIndex(source []byte) []int {
+	lines := []int{0} // Line 1 starts at offset 0
+
+	for i, b := range source {
+		if b == '\n' && i+1 < len(source) {
+			lines = append(lines, i+1)
+		}
+	}
+
+	return lines
+}
+
+// offsetToLineWithIndex converts byte offset to 1-based line number using pre-built index.
+func offsetToLineWithIndex(lineIndex []int, offset int) int {
+	// Binary search for the line containing this offset
+	low, high := 0, len(lineIndex)-1
+	for low < high {
+		mid := (low + high + 1) / 2
+		if lineIndex[mid] <= offset {
+			low = mid
+		} else {
+			high = mid - 1
+		}
+	}
+
+	return low + 1 // Convert to 1-based
+}
+
+// findBlockAtLine finds the deepest structural block element at the given line.
+func findBlockAtLine(doc *ast.Document, source []byte, targetLine int) ast.Node {
+	var target ast.Node
+
+	lineIndex := buildLineIndex(source)
+
+	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+
+		// Check for structural block elements with line info
+		var lines *text.Segments
+
+		switch block := n.(type) {
+		case *ast.Heading:
+			lines = block.Lines()
+		case *ast.Paragraph:
+			lines = block.Lines()
+		case *ast.ListItem:
+			// ListItem doesn't have Lines(), check children
+			return ast.WalkContinue, nil
+		case *ast.Blockquote:
+			// Blockquote doesn't have Lines(), check children
+			return ast.WalkContinue, nil
+		case *ast.FencedCodeBlock:
+			lines = block.Lines()
+		case *ast.CodeBlock:
+			lines = block.Lines()
+		default:
+			return ast.WalkContinue, nil
+		}
+
+		if lines != nil && lines.Len() > 0 {
+			first := lines.At(0)
+			last := lines.At(lines.Len() - 1)
+			// Get the line number where this block's content starts and ends
+			startLine := offsetToLineWithIndex(lineIndex, first.Start)
+
+			// Early exit: if we've passed the target line and have a match, stop
+			if startLine > targetLine+1 && target != nil {
+				return ast.WalkStop, nil
+			}
+
+			endLine := offsetToLineWithIndex(lineIndex, last.Stop-1)
+			// Match if target line is within this block's range
+			if targetLine >= startLine && targetLine <= endLine {
+				target = n
+			} else if _, ok := n.(*ast.FencedCodeBlock); ok && (targetLine == startLine-1 || targetLine == endLine+1) {
+				// Fenced code: ``` markers are on lines before/after content
+				target = n
+			}
+		}
+
+		return ast.WalkContinue, nil
+	})
+
+	return target
 }
 
 func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+	source := reader.Source()
+
+	// If we have a specific change line, use line-based targeting
+	if t.changeLine > 0 {
+		target := findBlockAtLine(doc, source, t.changeLine)
+		if target != nil {
+			target.SetAttribute([]byte("id"), []byte(ScrollAnchor))
+
+			return
+		}
+		// Fall through to content-diff approach if no block found
+	}
+
 	currentDocContent := make(map[string]string)
 	changedNodes := make(map[ast.Node]bool)
 
-	// Initialize the map if needed
+	// Get the old content for this specific document (with read lock)
+	oldDocContentMutex.RLock()
+
 	if oldDocContentByURI == nil {
-		oldDocContentByURI = make(map[string]map[string]string)
+		oldDocContentMutex.RUnlock()
+		oldDocContentMutex.Lock()
+		// Double-check after acquiring write lock
+		if oldDocContentByURI == nil {
+			oldDocContentByURI = make(map[string]map[string]string)
+		}
+		oldDocContentMutex.Unlock()
+		oldDocContentMutex.RLock()
 	}
 
-	// Get the old content for this specific document
 	oldDocContent := oldDocContentByURI[t.currentURI]
 
+	oldDocContentMutex.RUnlock()
+
 	var walk func(ast.Node, string)
+
 	walk = func(n ast.Node, path string) {
 		key := path + ":" + n.Kind().String()
-		content := string(n.Text(reader.Source()))
+		content := string(n.Text(reader.Source())) //nolint:staticcheck // Using deprecated API; refactoring would be extensive
 		currentDocContent[key] = content
 
 		if oldDocContent != nil {
@@ -112,14 +260,16 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 		}
 
 		for i, child := 0, n.FirstChild(); child != nil; i, child = i+1, child.NextSibling() {
-			walk(child, fmt.Sprintf("%s.%d", path, i))
+			walk(child, path+"."+strconv.Itoa(i))
 		}
 	}
 
 	walk(doc, "")
 
 	if len(changedNodes) == 0 {
+		oldDocContentMutex.Lock()
 		oldDocContentByURI[t.currentURI] = currentDocContent
+		oldDocContentMutex.Unlock()
 
 		return
 	}
@@ -162,7 +312,20 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 		target.SetAttribute([]byte("id"), []byte(ScrollAnchor))
 	}
 
+	oldDocContentMutex.Lock()
 	oldDocContentByURI[t.currentURI] = currentDocContent
+
+	// Evict old entries if cache exceeds limit
+	if len(oldDocContentByURI) > maxDocContentCache {
+		for k := range oldDocContentByURI {
+			delete(oldDocContentByURI, k)
+
+			if len(oldDocContentByURI) < maxDocContentCache/2 {
+				break
+			}
+		}
+	}
+	oldDocContentMutex.Unlock()
 }
 
 type LinkResolverTransformer struct {
@@ -170,12 +333,15 @@ type LinkResolverTransformer struct {
 }
 
 func CleanupDocumentContent(uri string) {
+	oldDocContentMutex.Lock()
+	defer oldDocContentMutex.Unlock()
+
 	if oldDocContentByURI != nil {
 		delete(oldDocContentByURI, uri)
 	}
 }
 
-func (t *LinkResolverTransformer) Transform(doc *ast.Document, reader text.Reader, _ parser.Context) {
+func (t *LinkResolverTransformer) Transform(doc *ast.Document, _ text.Reader, _ parser.Context) {
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -262,33 +428,18 @@ func (t *LinkResolverTransformer) resolveRelativeLink(dest string) string {
 	return relativePath
 }
 
-func HTML(document, uri string) (string, map[string]any) {
+func HTML(document, uri string, changeLine int) (string, map[string]any) {
 	source := []byte(document)
 
 	dir := getDocDir(uri)
 
-	extensions := defaultExtensions()
-
-	optionalExtensions := map[goldmark.Extender]bool{
-		&wikilink.Extender{}: EnableWikiLinks,
-		extension.Footnote:   EnableFootnotes,
-		emoji.Emoji:          EnableEmoji,
-	}
-
-	for ext, enabled := range optionalExtensions {
-		if enabled {
-			extensions = append(extensions, ext)
-		}
-	}
-
 	markdown := goldmark.New(
-		goldmark.WithExtensions(extensions...),
+		goldmark.WithExtensions(getExtensions()...),
 		goldmark.WithRendererOptions(
-			img64.WithPathResolver(img64.ParentLocalPathResolver(dir)),
 			goldmarkhtml.WithUnsafe()),
 		goldmark.WithParserOptions(
 			parser.WithASTTransformers(
-				util.Prioritized(&ScrollIDTransformer{currentURI: uri}, 100),
+				util.Prioritized(&ScrollIDTransformer{currentURI: uri, changeLine: changeLine}, 100),
 				util.Prioritized(&LinkResolverTransformer{currentURI: uri}, 99),
 			),
 		),
@@ -306,5 +457,8 @@ func HTML(document, uri string) (string, map[string]any) {
 		return errorHTML, nil
 	}
 
-	return buf.String(), meta.Get(ctx)
+	// Convert all <img> tags with local paths to base64 data URIs
+	htmlOutput := convertHTMLImages(buf.String(), dir)
+
+	return htmlOutput, meta.Get(ctx)
 }
