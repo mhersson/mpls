@@ -107,10 +107,12 @@ UML diagrams from plain text descriptions. This integration allows you to easily
 embed PlantUML code in your markdown files. Diagrams are rendered upon saving
 and only if the UML code has changed.
 
-_Please note that external HTTP calls are made only when UML code is present in
-the markdown and has changed, as well as when a file is opened. For users
-concerned about security, you can host a PlantUML server locally and specify the
-`--plantuml-server` flag to ensure that no external calls are made._
+> [!NOTE]
+>
+> _External HTTP calls are made only when UML code is present in the markdown
+> and has changed, as well as when a file is opened. For users concerned about
+> security, you can host a PlantUML server locally and specify the
+> `--plantuml-server` flag to ensure that no external calls are made._
 
 ## Install
 
