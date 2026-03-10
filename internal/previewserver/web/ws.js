@@ -1,45 +1,218 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const ws = new WebSocket("ws://localhost:%d/ws");
+(function () {
+  "use strict";
 
-  const MERMAID_RENDER_DELAY = 100;
-  const SCROLL_OFFSET = 150;
-  const SCROLL_RETRY_DELAY = 50;
-  const MAX_SCROLL_RETRIES = 10;
+  // ==========================================================================
+  // Configuration
+  // ==========================================================================
 
-  let isReloading = false;
-  let lastScrollTarget = null;
-  let enableTabsMode = false; // Global variable for preview mode
+  const CONFIG = {
+    MERMAID_RENDER_DELAY: 100,
+    SCROLL_OFFSET: 150,
+    SCROLL_RETRY_DELAY: 50,
+    MAX_SCROLL_RETRIES: 10,
+    RESIZE_DEBOUNCE_DELAY: 250,
+  };
 
-  // Utility functions
-  function $(id) {
-    return document.getElementById(id);
+  // ==========================================================================
+  // State
+  // ==========================================================================
+
+  const state = {
+    ws: null,
+    isReloading: false,
+    enableTabsMode: false,
+  };
+
+  // ==========================================================================
+  // Utilities
+  // ==========================================================================
+
+  const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  function debounce(fn, delay) {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn.apply(this, args), delay);
+    };
   }
 
-  function $$(selector) {
-    return document.querySelectorAll(selector);
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 
-  // Content management
-  function updateContent(renderedHtml) {
-    const contentElement = $("content");
-    if (contentElement) {
-      contentElement.innerHTML = renderedHtml;
-    }
-  }
+  // ==========================================================================
+  // Mermaid Module
+  // ==========================================================================
 
-  // Modal functionality
-  function createModalHandler() {
-    const modal = $("contentModal");
-    const closeModal = $("closeModal");
-    const mermaidContent = $("mermaidContent");
-    const imageContent = $("imageContent");
+  const mermaidRenderer = {
+    // TODO: Consider cache eviction for long-running sessions
+    svgCache: new Map(), // source content -> rendered SVG outerHTML
 
-    if (!modal || !closeModal || !mermaidContent || !imageContent) {
-      console.warn("Modal elements not found");
-      return { showModal: () => {}, initializeModal: () => {} };
-    }
+    renderError(el, error) {
+      const errDiv = document.createElement("div");
+      errDiv.className = "mermaid-error";
+      errDiv.style.cssText = "color:red;border:1px solid red;padding:8px";
+      errDiv.innerHTML = `<strong>Mermaid Error:</strong><pre>${escapeHtml(error.message || String(error))}</pre>`;
+      el.innerHTML = "";
+      el.appendChild(errDiv);
+    },
 
-    function showModal(type, content) {
+    async render() {
+      const elements = $$(".language-mermaid");
+      if (elements.length === 0 || !window.mermaid) {
+        return;
+      }
+
+      for (const el of elements) {
+        // Skip if already has SVG (e.g., from initial page load)
+        if (el.querySelector("svg")) continue;
+
+        const sourceContent = el.textContent || "";
+
+        // Check cache for pre-rendered SVG
+        const cachedSvg = this.svgCache.get(sourceContent);
+        if (cachedSvg) {
+          el.innerHTML = cachedSvg;
+          continue;
+        }
+
+        // Render new diagram
+        el.setAttribute("data-rendering", "true");
+        try {
+          await window.mermaid.run({ nodes: [el] });
+          // Cache the rendered SVG for future content updates
+          const svg = el.querySelector("svg");
+          if (svg) {
+            this.svgCache.set(sourceContent, svg.outerHTML);
+          }
+        } catch (error) {
+          console.error("Mermaid diagram failed:", error);
+          this.renderError(el, error);
+        } finally {
+          el.removeAttribute("data-rendering");
+        }
+      }
+    },
+  };
+
+  // ==========================================================================
+  // Scroll Module
+  // ==========================================================================
+
+  const scroll = {
+    lastTarget: null,
+
+    toEdit(retryCount = 0, fileChanged = false) {
+      const disableScrolling = $("disable-scrolling");
+      if (disableScrolling?.checked) {
+        return;
+      }
+
+      const targetElement = $("mpls-scroll-anchor");
+      if (!targetElement) {
+        this.lastTarget = null;
+        // If file changed and no anchor, scroll to top
+        if (fileChanged && window.scrollY > 0) {
+          window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+          });
+        }
+        return;
+      }
+
+      // Check if any mermaid diagrams are still rendering
+      const renderingElements = $$('[data-rendering="true"]');
+      if (
+        renderingElements.length > 0 &&
+        retryCount < CONFIG.MAX_SCROLL_RETRIES
+      ) {
+        setTimeout(
+          () => this.toEdit(retryCount + 1, fileChanged),
+          CONFIG.SCROLL_RETRY_DELAY,
+        );
+        return;
+      }
+
+      // Store target for future reference
+      this.lastTarget = targetElement;
+
+      const elementRect = targetElement.getBoundingClientRect();
+      const elementTop = elementRect.top + window.scrollY;
+      const targetScrollPosition = elementTop - CONFIG.SCROLL_OFFSET;
+
+      // Only scroll if we're not already at the target position
+      if (Math.abs(window.scrollY - targetScrollPosition) > 5) {
+        window.scrollTo({
+          top: targetScrollPosition,
+          behavior: "smooth",
+        });
+      }
+    },
+
+    handleResize: debounce(() => {
+      if (scroll.lastTarget && !$("disable-scrolling")?.checked) {
+        scroll.toEdit();
+      }
+    }, CONFIG.RESIZE_DEBOUNCE_DELAY),
+  };
+
+  // ==========================================================================
+  // Modal Module
+  // ==========================================================================
+
+  const modal = {
+    elements: {
+      modal: null,
+      closeBtn: null,
+      mermaidContent: null,
+      imageContent: null,
+    },
+
+    init() {
+      this.elements.modal = $("contentModal");
+      this.elements.closeBtn = $("closeModal");
+      this.elements.mermaidContent = $("mermaidContent");
+      this.elements.imageContent = $("imageContent");
+
+      if (
+        !this.elements.modal ||
+        !this.elements.closeBtn ||
+        !this.elements.mermaidContent ||
+        !this.elements.imageContent
+      ) {
+        console.warn("Modal elements not found");
+        return false;
+      }
+
+      // Event listeners
+      this.elements.closeBtn.addEventListener("click", () => this.hide());
+      this.elements.modal.addEventListener("click", (event) => {
+        if (event.target === this.elements.modal) {
+          this.hide();
+        }
+      });
+
+      // Keyboard navigation
+      document.addEventListener("keydown", (event) => {
+        if (
+          event.key === "Escape" &&
+          this.elements.modal.style.display === "flex"
+        ) {
+          this.hide();
+        }
+      });
+
+      return true;
+    },
+
+    show(type, content) {
+      const { mermaidContent, imageContent, modal: modalEl } = this.elements;
+
       // Reset modal content
       mermaidContent.style.display = "none";
       imageContent.style.display = "none";
@@ -56,38 +229,22 @@ document.addEventListener("DOMContentLoaded", () => {
         mermaidContent.style.display = "flex";
       }
 
-      modal.style.display = "flex";
-    }
+      modalEl.style.display = "flex";
+    },
 
-    function closeModalHandler() {
-      modal.style.display = "none";
-      // Clean up modal content
+    hide() {
+      const { modal: modalEl, mermaidContent, imageContent } = this.elements;
+      modalEl.style.display = "none";
       mermaidContent.innerHTML = "";
       imageContent.src = "";
-    }
+    },
 
-    // Event listeners
-    closeModal.addEventListener("click", closeModalHandler);
-    modal.addEventListener("click", (event) => {
-      if (event.target === modal) {
-        closeModalHandler();
-      }
-    });
-
-    // Keyboard navigation
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && modal.style.display === "flex") {
-        closeModalHandler();
-      }
-    });
-
-    function initializeModal() {
+    attachHandlers() {
       // Setup image modals
       $$("img").forEach((img) => {
-        // Skip if already has handler
         if (img._modalHandlerAttached) return;
 
-        img._modalHandler = () => showModal("image", img);
+        img._modalHandler = () => this.show("image", img);
         img.addEventListener("click", img._modalHandler);
         img._modalHandlerAttached = true;
         img.style.cursor = "pointer";
@@ -97,147 +254,162 @@ document.addEventListener("DOMContentLoaded", () => {
       $$(".language-mermaid").forEach((div) => {
         const svg = div.querySelector("svg");
         if (svg && !div._modalHandlerAttached) {
-          div._modalHandler = () => showModal("mermaid", svg);
+          div._modalHandler = () => this.show("mermaid", svg);
           div.addEventListener("click", div._modalHandler);
           div._modalHandlerAttached = true;
           div.style.cursor = "pointer";
         }
       });
-    }
+    },
+  };
 
-    return { showModal, initializeModal };
-  }
+  // ==========================================================================
+  // Content Module
+  // ==========================================================================
 
-  // Mermaid rendering with measurement
-  async function renderMermaid() {
-    const mermaidElements = $$(".language-mermaid");
-    if (mermaidElements.length === 0 || !window.mermaid) {
-      return Promise.resolve();
-    }
-
-    const scrollBefore = window.scrollY;
-
-    for (const el of mermaidElements) {
-      if (el.querySelector("svg")) continue; // Already rendered
-
-      el.setAttribute("data-rendering", "true");
-      try {
-        await window.mermaid.run({ nodes: [el] });
-      } catch (error) {
-        console.error("Mermaid diagram failed:", error);
-        const errDiv = document.createElement("div");
-        errDiv.className = "mermaid-error";
-        errDiv.style.cssText = "color:red;border:1px solid red;padding:8px";
-        errDiv.innerHTML = `<strong>Mermaid Error:</strong><pre>${escapeHtml(error.message || String(error))}</pre>`;
-        el.innerHTML = "";
-        el.appendChild(errDiv);
-      } finally {
-        el.removeAttribute("data-rendering");
+  const content = {
+    update(renderedHtml) {
+      const contentElement = $("content");
+      if (contentElement) {
+        contentElement.innerHTML = renderedHtml;
       }
-    }
+    },
+  };
 
-    return window.scrollY - scrollBefore;
-  }
+  // ==========================================================================
+  // Links Module
+  // ==========================================================================
 
-  function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  }
+  const links = {
+    setup() {
+      document.addEventListener("click", (event) => this.handleClick(event));
+    },
 
-  // Improved scroll functionality
-  function scrollToEdit(retryCount = 0, fileChanged = false) {
-    const disableScrolling = $("disable-scrolling");
-    if (disableScrolling?.checked) {
-      return;
-    }
+    handleClick(event) {
+      const link = event.target.closest("a[href]");
+      if (!link) return;
 
-    const targetElement = $("mpls-scroll-anchor");
-    if (!targetElement) {
-      lastScrollTarget = null;
-      // If file changed and no anchor, scroll to top
-      if (fileChanged && window.scrollY > 0) {
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-      }
-      return;
-    }
+      const href = link.getAttribute("href");
 
-    // Check if any mermaid diagrams are still rendering
-    const renderingElements = $$('[data-rendering="true"]');
-    if (renderingElements.length > 0 && retryCount < MAX_SCROLL_RETRIES) {
-      // Retry after a short delay
-      setTimeout(() => scrollToEdit(retryCount + 1, fileChanged), SCROLL_RETRY_DELAY);
-      return;
-    }
-
-    // Store target for future reference
-    lastScrollTarget = targetElement;
-
-    const elementRect = targetElement.getBoundingClientRect();
-    const elementTop = elementRect.top + window.scrollY;
-    const targetScrollPosition = elementTop - SCROLL_OFFSET;
-
-    // Only scroll if we're not already at the target position
-    if (Math.abs(window.scrollY - targetScrollPosition) > 5) {
-      window.scrollTo({
-        top: targetScrollPosition,
-        behavior: "smooth",
-      });
-    }
-  }
-
-  // Combined render and scroll function
-  async function renderMermaidAndScroll(fileChanged = false) {
-    // First render mermaid
-    await renderMermaid();
-
-    // Then initialize modals
-    modalHandler.initializeModal();
-
-    // Finally scroll to edit position
-    // Use setTimeout to ensure DOM has settled
-    setTimeout(() => {
-      scrollToEdit(0, fileChanged);
-    }, MERMAID_RENDER_DELAY);
-  }
-
-  // WebSocket event handlers
-  async function handleWebSocketMessage(event) {
-    try {
-      const response = JSON.parse(event.data);
-
-      // Handle config message
-      if (response.Type === "config") {
-        enableTabsMode = response.EnableTabs || false;
-        console.log(
-          `Preview mode: ${enableTabsMode ? "multi-tab" : "single-page"}`,
-        );
+      // Anchor-only links - let browser handle
+      if (href.startsWith("#")) {
         return;
       }
 
-      // Handle closeDocument message
-      if (response.Type === "closeDocument") {
-        // Close window if it's the last document (in single-page mode)
-        if (response.IsLastDocument) {
-          console.log("Last document closed, closing preview");
+      // External links - let browser handle
+      if (this.isExternal(href)) {
+        return;
+      }
+
+      // Internal markdown links
+      const isInternal = link.hasAttribute("data-mpls-internal");
+      const target = link.getAttribute("data-mpls-target");
+
+      if (isInternal && target) {
+        event.preventDefault();
+
+        const message = {
+          type: "openDocument",
+          uri: target,
+          takeFocus: true,
+        };
+
+        // In single-page mode, also update the preview
+        if (!state.enableTabsMode) {
+          message.updatePreview = true;
+        }
+
+        state.ws.send(JSON.stringify(message));
+      }
+    },
+
+    isExternal(href) {
+      return href.startsWith("http://") || href.startsWith("https://");
+    },
+  };
+
+  // ==========================================================================
+  // WebSocket Module
+  // ==========================================================================
+
+  const websocket = {
+    handlers: {
+      config: (data) => websocket.handleConfig(data),
+      closeDocument: (data) => websocket.handleClose(data),
+    },
+
+    init(ws) {
+      state.ws = ws;
+
+      ws.addEventListener("open", () => {
+        console.log("WebSocket connection established");
+        links.setup();
+      });
+
+      ws.addEventListener("message", (event) => this.onMessage(event));
+
+      ws.addEventListener("close", (event) => {
+        console.log("WebSocket connection closed:", event);
+        if (!state.isReloading) {
           window.close();
+        }
+      });
+
+      ws.addEventListener("error", (event) => {
+        console.error("WebSocket error:", event);
+      });
+    },
+
+    async onMessage(event) {
+      try {
+        const response = JSON.parse(event.data);
+
+        // Check for special message types
+        const handler = this.handlers[response.Type];
+        if (handler) {
+          handler(response);
           return;
         }
 
-        // Close window in multi-tab mode if it matches this tab
-        if (
-          enableTabsMode &&
-          response.DocumentURI === window.location.pathname
-        ) {
-          console.log(`Closing preview for ${response.DocumentURI}`);
-          window.close();
+        // Guard against unknown message types
+        if (!response.HTML) {
+          console.warn("Unknown message type:", response.Type);
+          return;
         }
+
+        // Default: content update
+        await this.handleContent(response);
+      } catch (error) {
+        console.error("Failed to process WebSocket message:", error);
+      }
+    },
+
+    handleConfig(data) {
+      state.enableTabsMode = data.EnableTabs || false;
+      console.log(
+        `Preview mode: ${state.enableTabsMode ? "multi-tab" : "single-page"}`,
+      );
+    },
+
+    handleClose(data) {
+      // Close window if it's the last document (in single-page mode)
+      if (data.IsLastDocument) {
+        console.log("Last document closed, closing preview");
+        window.close();
         return;
       }
 
+      // Close window in multi-tab mode if it matches this tab
+      if (
+        state.enableTabsMode &&
+        data.DocumentURI === window.location.pathname
+      ) {
+        console.log(`Closing preview for ${data.DocumentURI}`);
+        window.close();
+      }
+    },
+
+    async handleContent(response) {
       const {
         HTML: renderedHtml,
         Title: responseTitle,
@@ -280,7 +452,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // Update content
-      updateContent(renderedHtml);
+      content.update(renderedHtml);
 
       // Notify presentation module of content update
       if (window.presentation) {
@@ -289,76 +461,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Render and scroll
       await renderMermaidAndScroll(titleChanged);
-    } catch (error) {
-      console.error("Failed to process WebSocket message:", error);
-    }
-  }
+    },
+  };
 
-  function handleWebSocketClose(event) {
-    console.log("WebSocket connection closed:", event);
-    if (!isReloading) {
-      window.close();
-    }
-  }
+  // ==========================================================================
+  // Lazy Loading
+  // ==========================================================================
 
-  function handleWebSocketOpen() {
-    console.log("WebSocket connection established");
-    setupLinkInterception();
-  }
-
-  function handleWebSocketError(event) {
-    console.error("WebSocket error:", event);
-  }
-
-  // Link interception for multi-file navigation
-  function setupLinkInterception() {
-    document.addEventListener("click", (event) => {
-      const link = event.target.closest("a[href]");
-      if (!link) return;
-
-      const href = link.getAttribute("href");
-      const isInternal = link.hasAttribute("data-mpls-internal");
-      const target = link.getAttribute("data-mpls-target");
-
-      // Anchor-only links - let browser handle
-      if (href.startsWith("#")) {
-        return;
-      }
-
-      // External links - let browser handle
-      if (href.startsWith("http://") || href.startsWith("https://")) {
-        return;
-      }
-
-      // Internal markdown links
-      if (isInternal && target) {
-        event.preventDefault();
-
-        if (enableTabsMode) {
-          // MULTI-TAB MODE: Send message to open in editor (browser tab opens via TextDocumentDidOpen)
-          ws.send(
-            JSON.stringify({
-              type: "openDocument",
-              uri: target,
-              takeFocus: true,
-            }),
-          );
-        } else {
-          // SINGLE-PAGE MODE: Send message to open in editor + update preview
-          ws.send(
-            JSON.stringify({
-              type: "openDocument",
-              uri: target,
-              takeFocus: true,
-              updatePreview: true,
-            }),
-          );
-        }
-      }
-    });
-  }
-
-  // Intersection Observer for lazy loading (optional enhancement)
   function setupLazyLoading() {
     const observerOptions = {
       root: null,
@@ -384,34 +493,46 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Initialize modal handler
-  const modalHandler = createModalHandler();
+  // ==========================================================================
+  // Combined Operations
+  // ==========================================================================
 
-  // WebSocket setup
-  ws.addEventListener("open", handleWebSocketOpen);
-  ws.addEventListener("message", handleWebSocketMessage);
-  ws.addEventListener("close", handleWebSocketClose);
-  ws.addEventListener("error", handleWebSocketError);
+  async function renderMermaidAndScroll(fileChanged = false) {
+    // First render mermaid
+    await mermaidRenderer.render();
 
-  // Window event listeners
-  window.addEventListener("load", async () => {
-    setupLazyLoading();
-    // Render mermaid diagrams that are already in the HTML from HTTP GET
-    await renderMermaidAndScroll();
-  });
+    // Then attach modal handlers
+    modal.attachHandlers();
 
-  window.addEventListener("beforeunload", () => {
-    isReloading = true;
-  });
+    // Finally scroll to edit position
+    // Use setTimeout to ensure DOM has settled
+    setTimeout(() => {
+      scroll.toEdit(0, fileChanged);
+    }, CONFIG.MERMAID_RENDER_DELAY);
+  }
 
-  // Handle window resize to maintain scroll position
-  let resizeTimeout;
-  window.addEventListener("resize", () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      if (lastScrollTarget && !$("disable-scrolling")?.checked) {
-        scrollToEdit();
-      }
-    }, 250);
-  });
-});
+  // ==========================================================================
+  // Initialization
+  // ==========================================================================
+
+  function init() {
+    const ws = new WebSocket("ws://localhost:%d/ws");
+
+    modal.init();
+    websocket.init(ws);
+
+    window.addEventListener("load", async () => {
+      setupLazyLoading();
+      // Render mermaid diagrams that are already in the HTML from HTTP GET
+      await renderMermaidAndScroll();
+    });
+
+    window.addEventListener("beforeunload", () => {
+      state.isReloading = true;
+    });
+
+    window.addEventListener("resize", scroll.handleResize);
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
