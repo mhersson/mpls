@@ -312,29 +312,31 @@ config.
 
 ```lua
 --- filename: ~/.config/nvim/lsp/mpls.lua
+-- ~/.config/nvim/lsp/mpls.lua
+---@type vim.lsp.Config
 return {
     cmd = {
         "mpls",
-        "--theme", "tokyonight",
+        "--no-auto",
+        "--theme",
+        "everforest-dark",
         "--enable-emoji",
         "--enable-footnotes",
     },
     root_markers = { ".marksman.toml", ".git" },
-    filetypes = { "markdown", "makdown.mdx" },
+    filetypes = { "markdown", "markdown.mdx" },
     on_attach = function(client, bufnr)
         vim.api.nvim_buf_create_user_command(bufnr, "MplsOpenPreview", function()
-            local params = {
+            client:exec_cmd({
+                title = "Preview markdown with mpls",
                 command = "open-preview",
-            }
-            client.request("workspace/executeCommand", params, function(err, _)
-                if err then
-                    vim.notify("Error executing command: " .. err.message, vim.log.levels.ERROR)
-                else
-                    vim.notify("Preview opened", vim.log.levels.INFO)
-                end
-            end)
-        end, {
-            desc = "Preview markdown with mpls",
+            })
+        end, { desc = "Preview markdown with mpls" })
+
+        -- Optional keybinding example
+        vim.keymap.set("n", "<leader>mp", "<cmd>MplsOpenPreview<cr>", {
+            buffer = bufnr,
+            desc = "Markdown Preview",
         })
     end,
 }
@@ -345,7 +347,6 @@ whenever you change focus to a buffer containing a markdown file.
 
 ```lua
 --- filename: ~/.config/nvim/lua/config/autocmds.lua
-
 --- MPLS Focus Handler
 local function create_debounced_mpls_sender(delay)
     delay = delay or 300
@@ -357,10 +358,8 @@ local function create_debounced_mpls_sender(delay)
             timer = nil
         end
 
-        ---@diagnostic disable-next-line: undefined-field
         timer = vim.uv.new_timer()
         if not timer then
-            vim.notify("Failed to create timer for MPLS focus", vim.log.levels.ERROR)
             return
         end
 
@@ -368,43 +367,36 @@ local function create_debounced_mpls_sender(delay)
             delay,
             0,
             vim.schedule_wrap(function()
-                local bufnr = vim.api.nvim_get_current_buf()
-
-                local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
-                if filetype ~= "markdown" then
-                    return
-                end
-
-                local clients = vim.lsp.get_clients({ name = "mpls" })
-
-                if #clients == 0 then
-                    return
-                end
-
-                local client = clients[1]
-                local params = { uri = vim.uri_from_bufnr(bufnr) }
-
-                ---@diagnostic disable-next-line: param-type-mismatch
-                client:notify("mpls/editorDidChangeFocus", params)
-
                 if timer then
                     timer:close()
                     timer = nil
                 end
+
+                local bufnr = vim.api.nvim_get_current_buf()
+                if vim.bo[bufnr].filetype ~= "markdown" then
+                    return
+                end
+
+                local clients = vim.lsp.get_clients({ name = "mpls", bufnr = bufnr })
+                if #clients == 0 then
+                    return
+                end
+
+                clients[1]:notify("mpls/editorDidChangeFocus", {
+                    uri = vim.uri_from_bufnr(bufnr),
+                })
             end)
         )
     end
 end
 
-local send_mpls_focus = create_debounced_mpls_sender(300)
-
-local group = vim.api.nvim_create_augroup("MplsFocus", { clear = true })
 vim.api.nvim_create_autocmd("BufEnter", {
     pattern = "*.md",
-    callback = send_mpls_focus,
-    group = group,
+    callback = create_debounced_mpls_sender(300),
+    group = vim.api.nvim_create_augroup("MplsFocus", { clear = true }),
     desc = "Notify MPLS of buffer focus changes",
-}
+})
+
 ```
 
 </details>
