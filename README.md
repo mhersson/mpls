@@ -307,96 +307,29 @@ For example, to bind it to `Ctrl-m`:
 
 <summary>click to expand</summary>
 
-In my `init.lua` I have `vim.lsp.enable({"mpls"})` in addition to the following
-config.
+> [!TIP]
+> mpls can be installed with [mason.nvim](https://github.com/mason-org/mason.nvim)
+>
+> ```text
+> :MasonInstall mpls
+> ```
+
+The [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) extension
+is the recommended way of using mpls with Neovim
+(if you prefer not to install the extension, you can copy the
+[mpls configuration](https://github.com/neovim/nvim-lspconfig/blob/master/lsp/mpls.lua)
+manually to `~/.config/nvim/lsp/mpls.lua` instead).
+After installing the nvim-lspconfig extension,
+you need to enable the language server with:
 
 ```lua
---- filename: ~/.config/nvim/lsp/mpls.lua
--- ~/.config/nvim/lsp/mpls.lua
----@type vim.lsp.Config
-return {
-    cmd = {
-        "mpls",
-        "--no-auto",
-        "--theme",
-        "everforest-dark",
-        "--enable-emoji",
-        "--enable-footnotes",
-    },
-    root_markers = { ".marksman.toml", ".git" },
-    filetypes = { "markdown", "markdown.mdx" },
-    on_attach = function(client, bufnr)
-        vim.api.nvim_buf_create_user_command(bufnr, "MplsOpenPreview", function()
-            client:exec_cmd({
-                title = "Preview markdown with mpls",
-                command = "open-preview",
-            })
-        end, { desc = "Preview markdown with mpls" })
-
-        -- Optional keybinding example
-        vim.keymap.set("n", "<leader>mp", "<cmd>MplsOpenPreview<cr>", {
-            buffer = bufnr,
-            desc = "Markdown Preview",
-        })
-    end,
-}
+vim.lsp.enable({"mpls"})
 ```
 
-The following autocmds config is optional, it makes `mpls` update the preview
-whenever you change focus to a buffer containing a markdown file.
+The nvim-lspconfig provide the following command to start the preview:
 
-```lua
---- filename: ~/.config/nvim/lua/config/autocmds.lua
---- MPLS Focus Handler
-local function create_debounced_mpls_sender(delay)
-    delay = delay or 300
-    local timer = nil
-
-    return function()
-        if timer then
-            timer:close()
-            timer = nil
-        end
-
-        timer = vim.uv.new_timer()
-        if not timer then
-            return
-        end
-
-        timer:start(
-            delay,
-            0,
-            vim.schedule_wrap(function()
-                if timer then
-                    timer:close()
-                    timer = nil
-                end
-
-                local bufnr = vim.api.nvim_get_current_buf()
-                if vim.bo[bufnr].filetype ~= "markdown" then
-                    return
-                end
-
-                local clients = vim.lsp.get_clients({ name = "mpls", bufnr = bufnr })
-                if #clients == 0 then
-                    return
-                end
-
-                clients[1]:notify("mpls/editorDidChangeFocus", {
-                    uri = vim.uri_from_bufnr(bufnr),
-                })
-            end)
-        )
-    end
-end
-
-vim.api.nvim_create_autocmd("BufEnter", {
-    pattern = "*.md",
-    callback = create_debounced_mpls_sender(300),
-    group = vim.api.nvim_create_augroup("MplsFocus", { clear = true }),
-    desc = "Notify MPLS of buffer focus changes",
-})
-
+```text
+:LspMplsOpenPreview
 ```
 
 </details>
