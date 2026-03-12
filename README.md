@@ -116,6 +116,15 @@ and only if the UML code has changed.
 
 ## Install
 
+> [!TIP]
+>
+> **For Neovim users:** mpls can be installed with
+> [mason.nvim](https://github.com/mason-org/mason.nvim)
+>
+> ```text
+> :MasonInstall mpls
+> ```
+
 ### Homebrew (macOS and Linux)
 
 The easiest way to install and keep `mpls` updated:
@@ -265,7 +274,7 @@ The following options can be used when starting `mpls`:
 5. See the [theme gallery](screenshots/themes/README.md) for screenshots of all
    available themes, or use `--list-themes` to list them. Default is `light`.
 
-## Configuration examples
+## Editor Configuration
 
 **✨Helix**
 
@@ -301,35 +310,68 @@ For example, to bind it to `Ctrl-m`:
 
 </details>
 
-**✨Neovim 0.11+ using vim.lsp.enable**
+**✨Neovim 0.11+**
 
 <details>
 
 <summary>click to expand</summary>
 
-> [!TIP]
-> mpls can be installed with [mason.nvim](https://github.com/mason-org/mason.nvim)
->
-> ```text
-> :MasonInstall mpls
-> ```
-
-The [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) extension
-is the recommended way of using mpls with Neovim
-(if you prefer not to install the extension, you can copy the
-[mpls configuration](https://github.com/neovim/nvim-lspconfig/blob/master/lsp/mpls.lua)
-manually to `~/.config/nvim/lsp/mpls.lua` instead).
-After installing the nvim-lspconfig extension,
-you need to enable the language server with:
+The [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) extension is the
+easiest way to configure mpls with Neovim. If you prefer not to install the
+extension, you can copy the complete configuration shown below manually to
+`~/.config/nvim/lsp/mpls.lua` instead. Whichever method you choose, you need to
+enable the language server with:
 
 ```lua
+-- filename: ~/.config/nvim/init.lua
 vim.lsp.enable({"mpls"})
 ```
 
-The nvim-lspconfig provide the following command to start the preview:
+The nvim-lspconfig provides the following command to start the preview:
 
 ```text
 :LspMplsOpenPreview
+```
+
+**Complete configuration:** (Includes custom args and an optional keybinding)
+
+```lua
+-- filename: ~/.config/nvim/lsp/mpls.lua
+---@type vim.lsp.Config
+return {
+    cmd = {
+        "mpls",
+        "--no-auto",
+        "--theme",
+        "dark",
+        "--enable-emoji",
+        "--enable-footnotes",
+    },
+    root_markers = { ".marksman.toml", ".git" },
+    filetypes = { "markdown" },
+    on_attach = function(client, bufnr)
+        vim.api.nvim_create_autocmd("BufEnter", {
+            pattern = { "*.md" },
+            group = vim.api.nvim_create_augroup("lspconfig.mpls.focus", { clear = true }),
+            callback = function(ctx)
+                ---@diagnostic disable-next-line:param-type-mismatch
+                client:notify("mpls/editorDidChangeFocus", { uri = ctx.match })
+            end,
+            desc = "mpls: notify buffer focus changed",
+        })
+        vim.api.nvim_buf_create_user_command(bufnr, "LspMplsOpenPreview", function()
+            client:exec_cmd({
+                title = "Preview markdown with mpls",
+                command = "open-preview",
+            })
+        end, { desc = "Preview markdown with mpls" })
+        -- Optional keybinding
+        vim.keymap.set("n", "<leader>mp", "<cmd>LspMplsOpenPreview<cr>", {
+            buffer = bufnr,
+            desc = "Markdown Preview",
+        })
+    end,
+}
 ```
 
 </details>
