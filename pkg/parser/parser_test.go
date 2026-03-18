@@ -142,7 +142,7 @@ func TestHTML_BasicMarkdown(t *testing.T) { //nolint:paralleltest // Modifies gl
 
 	html, meta := HTML(markdown, uri, 0)
 
-	assert.Contains(t, html, "<h1>")
+	assert.Contains(t, html, "<h1 id=\"hello-world\">")
 	assert.Contains(t, html, "Hello World")
 	assert.Contains(t, html, "<p>")
 	assert.Contains(t, html, "This is a paragraph")

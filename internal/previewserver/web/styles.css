@@ -5,6 +5,10 @@ html {
   background-color: var(--background-color);
 }
 
+h1, h2, h3, h4, h5, h6 {
+  position: relative;
+}
+
 h1::after,
 h2::after,
 h3::after,
@@ -14,6 +18,42 @@ h6::after {
   content: " ";
   display: block;
   border: 1px solid var(--border-color);
+}
+
+.heading-anchor {
+  position: absolute;
+  left: -1em;
+  top: 0;
+  opacity: 0;
+  color: var(--link-color);
+  text-decoration: none;
+  font-weight: normal;
+  transition: opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-right: 0.5em;
+}
+
+.heading-anchor svg {
+  fill: currentColor;
+  width: 0.7em;
+  height: 0.7em;
+}
+
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor,
+h5:hover .heading-anchor,
+h6:hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  text-decoration: none;
+  color: var(--link-hover-color);
 }
 
 body {

@@ -438,6 +438,7 @@ func HTML(document, uri string, changeLine int) (string, map[string]any) {
 		goldmark.WithRendererOptions(
 			goldmarkhtml.WithUnsafe()),
 		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
 			parser.WithASTTransformers(
 				util.Prioritized(&ScrollIDTransformer{currentURI: uri, changeLine: changeLine}, 100),
 				util.Prioritized(&LinkResolverTransformer{currentURI: uri}, 99),
