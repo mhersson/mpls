@@ -112,7 +112,7 @@
         return;
       }
 
-      const targetElement = $("mpls-scroll-anchor");
+      const targetElement = document.querySelector("[data-mpls-scroll-anchor]");
       if (!targetElement) {
         this.lastTarget = null;
         // If file changed and no anchor, scroll to top

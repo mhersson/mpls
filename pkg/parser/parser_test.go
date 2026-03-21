@@ -345,7 +345,7 @@ func TestHTML_LineBasedScrollAnchor(t *testing.T) { //nolint:paralleltest // Mod
 	assert.Contains(t, html, ScrollAnchor, "expected scroll anchor when changeLine is specified")
 
 	// The anchor should be on the heading at line 5
-	assert.Contains(t, html, `id="mpls-scroll-anchor">Second Heading`)
+	assert.Contains(t, html, `data-mpls-scroll-anchor="true">Second Heading`)
 }
 
 func TestHTML_LineBasedScrollAnchor_Paragraph(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache
@@ -385,7 +385,7 @@ func TestHTML_LineBasedScrollAnchor_LineAboveHeading(t *testing.T) { //nolint:pa
 
 	// The anchor should NOT be on Second Heading
 	// This is the bug: anchor incorrectly attaches to the heading when editing line above it
-	assert.NotContains(t, html, `id="mpls-scroll-anchor">Second Heading`,
+	assert.NotContains(t, html, `data-mpls-scroll-anchor="true">Second Heading`,
 		"anchor should NOT be on heading when editing line above it - this breaks presentation mode slide navigation")
 }
 
