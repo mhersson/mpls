@@ -192,7 +192,7 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 	if t.changeLine > 0 {
 		target := findBlockAtLine(doc, source, t.changeLine)
 		if target != nil {
-			target.SetAttribute([]byte("id"), []byte(ScrollAnchor))
+			target.SetAttribute([]byte("data-"+ScrollAnchor), []byte("true"))
 
 			return
 		}
@@ -309,7 +309,7 @@ func (t *ScrollIDTransformer) Transform(doc *ast.Document, reader text.Reader, _
 	})
 
 	if target != nil {
-		target.SetAttribute([]byte("id"), []byte(ScrollAnchor))
+		target.SetAttribute([]byte("data-"+ScrollAnchor), []byte("true"))
 	}
 
 	oldDocContentMutex.Lock()

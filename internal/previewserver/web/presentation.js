@@ -316,7 +316,7 @@
      */
     function findSlideWithAnchor(slides) {
         for (let i = 0; i < slides.length; i++) {
-            if (slides[i].html.includes('id="mpls-scroll-anchor"')) {
+            if (slides[i].html.includes('data-mpls-scroll-anchor')) {
                 return i;
             }
         }
