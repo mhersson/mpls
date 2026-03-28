@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -25,6 +26,8 @@ var (
 	BasePath   string
 	DisableTLS bool
 )
+
+var plantumlMarkerRegex = regexp.MustCompile(`@start\w+`)
 
 var enc *base64.Encoding
 
@@ -229,8 +232,8 @@ func InsertPlantumlDiagram(data string, generate bool, plantumls []Plantuml) (st
 				htmlEncodedUml := codeContent.String()
 				uml := htmlpkg.UnescapeString(htmlEncodedUml)
 
-				// Only process if the UML content contains @startuml marker
-				if !strings.Contains(uml, "@startuml") {
+				// Only process if the content contains a valid PlantUML @start marker
+				if !plantumlMarkerRegex.MatchString(uml) {
 					// Not a valid PlantUML diagram, keep the original code block
 					currentPreHasPlantuml = false
 

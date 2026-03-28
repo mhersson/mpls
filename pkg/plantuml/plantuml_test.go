@@ -22,11 +22,11 @@ func TestInsertPlantumlDiagram_NoPlantUML(t *testing.T) {
 	assert.Empty(t, plantumls)
 }
 
-func TestInsertPlantumlDiagram_NoStartuml(t *testing.T) {
+func TestInsertPlantumlDiagram_NoStartMarker(t *testing.T) {
 	t.Parallel()
 
-	// PlantUML code block without @startuml should be left as-is
-	input := `<pre><code class="language-plantuml">just some text without startuml</code></pre>`
+	// PlantUML code block without a @start marker should be left as-is
+	input := `<pre><code class="language-plantuml">just some text without a start marker</code></pre>`
 
 	result, plantumls, err := InsertPlantumlDiagram(input, false, nil)
 	require.NoError(t, err)
@@ -125,6 +125,49 @@ A -> B
 	assert.Contains(t, result, `<pre><code class="language-python">print("hello")</code></pre>`)
 
 	assert.Len(t, plantumls, 1)
+}
+
+func TestInsertPlantumlDiagram_NonUMLDiagramType(t *testing.T) {
+	t.Parallel()
+
+	// A @startgantt diagram should be processed just like @startuml
+	input := `<pre><code class="language-plantuml">@startgantt
+Project starts 2025-01-01
+[Task A] lasts 10 days
+@endgantt</code></pre>`
+
+	result, plantumls, err := InsertPlantumlDiagram(input, false, []Plantuml{
+		{EncodedUML: Encode("@startgantt\nProject starts 2025-01-01\n[Task A] lasts 10 days\n@endgantt"), Diagram: `<img src="gantt-diagram">`},
+	})
+	require.NoError(t, err)
+
+	expected := `<img src="gantt-diagram">`
+	assert.Equal(t, expected, result)
+	assert.Len(t, plantumls, 1)
+}
+
+func TestInsertPlantumlDiagram_MixedDiagramTypes(t *testing.T) {
+	t.Parallel()
+
+	// Mix of @startuml and @startgantt diagrams
+	input := `<p>Sequence:</p>
+<pre><code class="language-plantuml">@startuml
+A -> B
+@enduml</code></pre>
+<p>Gantt:</p>
+<pre><code class="language-plantuml">@startgantt
+[Task A] lasts 10 days
+@endgantt</code></pre>`
+
+	result, plantumls, err := InsertPlantumlDiagram(input, false, []Plantuml{
+		{EncodedUML: Encode("@startuml\nA -> B\n@enduml"), Diagram: `<img src="sequence">`},
+		{EncodedUML: Encode("@startgantt\n[Task A] lasts 10 days\n@endgantt"), Diagram: `<img src="gantt">`},
+	})
+	require.NoError(t, err)
+
+	assert.Contains(t, result, `<img src="sequence">`)
+	assert.Contains(t, result, `<img src="gantt">`)
+	assert.Len(t, plantumls, 2)
 }
 
 func TestInsertPlantumlDiagram_HTMLEntities(t *testing.T) {
