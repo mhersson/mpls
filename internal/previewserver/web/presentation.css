@@ -54,6 +54,11 @@
     color: var(--heading-h3-color, var(--text-color));
 }
 
+/* Hide heading anchors in presentation mode */
+#slide-content .heading-anchor {
+    display: none;
+}
+
 /* Bold/strong text */
 #slide-content strong,
 #slide-content b {
