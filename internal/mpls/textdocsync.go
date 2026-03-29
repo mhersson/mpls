@@ -7,8 +7,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/mhersson/glsp"
-	protocol "github.com/mhersson/glsp/protocol_3_16"
+	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/mhersson/mpls/pkg/plantuml"

@@ -38,8 +38,6 @@ github.com/lucasb-eyer/go-colorful v1.3.0 h1:2/yBRLdWBZKrf7gB40FoiKfAWYQ0lqNcbuQ
 github.com/lucasb-eyer/go-colorful v1.3.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
-github.com/mhersson/glsp v0.2.3 h1:Ex/5OI9svM9YRQKIuDI69tdWV7mPImfrqDvOOY8p9zE=
-github.com/mhersson/glsp v0.2.3/go.mod h1:PRT72kA0Cr+Z/n2fRRqZM6Gzv0UqumM1GucvpjIEOJc=
 github.com/muesli/termenv v0.16.0 h1:S5AlUN9dENB57rsbnkPyfdGuWIlkmzJjbFf0Tf5FWUc=
 github.com/muesli/termenv v0.16.0/go.mod h1:ZRfOIKPFDYQoDFF4Olj7/QJbW60Ol/kL1pU3VfY/Cnk=
 github.com/petermattis/goid v0.0.0-20250813065127-a731cc31b4fe/go.mod h1:pxMtw7cyUw6B2bRH0ZBANSPg+AoSud1I1iyJHI69jH4=
@@ -71,6 +69,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/tliron/commonlog v0.2.21 h1:V1v+6opmzuOqDxxnxxM5RWtlHZmqZlDxkKeZGs6DpPg=
 github.com/tliron/commonlog v0.2.21/go.mod h1:W6XVoS/zo7mHXv2Kz8HKnBq+U34dFysJ2KUh2Aboibw=
+github.com/tliron/glsp v0.2.3-0.20250617204849-59d6e3155c81 h1:gQPs3aNGs4z0AWq4v1iyaA6eyoE0RvGihgDPw6REIhY=
+github.com/tliron/glsp v0.2.3-0.20250617204849-59d6e3155c81/go.mod h1:0mr4+bYwGddJfGuaxnUZBSxkshSzFOIyTmBRvfJDBo4=
 github.com/tliron/go-kutil v0.4.0 h1:5JwcBacgnqS3XyhwCWZKvq8ftlbVttNXnt+kfCH+Y2E=
 github.com/tliron/go-kutil v0.4.0/go.mod h1:hpHVq+CP1uci2M208UEjPiPwsRsz/QweGBnLB3CaQ24=
 github.com/yuin/goldmark v1.4.15/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=

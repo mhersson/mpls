@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mhersson/glsp"
-	protocol316 "github.com/mhersson/glsp/protocol_3_16"
-	protocol "github.com/mhersson/glsp/protocol_mpls"
-	serverPkg "github.com/mhersson/glsp/server"
+	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
+	serverPkg "github.com/tliron/glsp/server"
 	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/mhersson/mpls/pkg/plantuml"
@@ -49,9 +48,9 @@ func Run() {
 }
 
 func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, error) {
-	protocol316.SetTraceValue("message")
+	protocol.SetTraceValue("message")
 
-	_ = protocol316.Trace(context, protocol316.MessageTypeInfo, log("Initializing "+lsName))
+	_ = protocol.Trace(context, protocol.MessageTypeInfo, log("Initializing "+lsName))
 
 	// Extract workspace root
 	switch {
@@ -74,29 +73,29 @@ func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, 
 
 	capabilities := Handler.CreateServerCapabilities()
 	if TextDocumentUseFullSync {
-		capabilities.TextDocumentSync = protocol316.TextDocumentSyncKindFull
+		capabilities.TextDocumentSync = protocol.TextDocumentSyncKindFull
 	}
 
 	capabilities.ExecuteCommandProvider.Commands = []string{"open-preview"}
 
 	return protocol.InitializeResult{
 		Capabilities: capabilities,
-		ServerInfo: &protocol316.InitializeResultServerInfo{
+		ServerInfo: &protocol.InitializeResultServerInfo{
 			Name:    lsName,
 			Version: &Version,
 		},
 	}, nil
 }
 
-func initialized(ctx *glsp.Context, _ *protocol316.InitializedParams) error {
+func initialized(ctx *glsp.Context, _ *protocol.InitializedParams) error {
 	// Start goroutine to handle browser -> LSP -> editor requests
 	startDocumentRequestHandler(ctx)
 
 	return nil
 }
 
-func setTrace(_ *glsp.Context, params *protocol316.SetTraceParams) error {
-	protocol316.SetTraceValue(params.Value)
+func setTrace(_ *glsp.Context, params *protocol.SetTraceParams) error {
+	protocol.SetTraceValue(params.Value)
 
 	return nil
 }
@@ -104,7 +103,7 @@ func setTrace(_ *glsp.Context, params *protocol316.SetTraceParams) error {
 func shutdown(_ *glsp.Context) error {
 	serverCancel() // Signal goroutine to exit
 	previewServer.Stop()
-	protocol316.SetTraceValue(protocol316.TraceValueOff)
+	protocol.SetTraceValue(protocol.TraceValueOff)
 
 	return nil
 }
@@ -129,16 +128,16 @@ func startDocumentRequestHandler(ctx *glsp.Context) {
 				fileURI := documentRegistry.GetFileURI("/" + relativePath)
 
 				// Create ShowDocumentParams
-				params := protocol316.ShowDocumentParams{
+				params := protocol.ShowDocumentParams{
 					URI:       fileURI,
 					External:  boolPtr(false),
 					TakeFocus: boolPtr(req.TakeFocus),
 				}
 
 				// Send window/showDocument request to client
-				var result protocol316.ShowDocumentResult
+				var result protocol.ShowDocumentResult
 
-				ctx.Call(protocol316.ServerWindowShowDocument, params, &result)
+				ctx.Call(protocol.ServerWindowShowDocument, params, &result)
 
 				// Mark first preview shown for --no-auto behavior
 				if result.Success {
