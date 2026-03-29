@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tliron/glsp"
-	protocol "github.com/tliron/glsp/protocol_3_16"
-	serverPkg "github.com/tliron/glsp/server"
 	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/mhersson/mpls/pkg/plantuml"
+	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
+	serverPkg "github.com/tliron/glsp/server"
 
 	// Must include a backend implementation
 	// See CommonLog for other options: https://github.com/tliron/commonlog
