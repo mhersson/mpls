@@ -1,23 +1,30 @@
 package mpls
 
 import (
+	"encoding/json"
 	"path/filepath"
 
-	"github.com/mhersson/glsp"
-	protocol316 "github.com/mhersson/glsp/protocol_3_16"
-	protocol "github.com/mhersson/glsp/protocol_mpls"
+	"github.com/tliron/glsp"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 	"github.com/mhersson/mpls/internal/previewserver"
 	"github.com/mhersson/mpls/pkg/parser"
 	"github.com/mhersson/mpls/pkg/plantuml"
 )
 
-func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFocusParams) error {
-	var err error
+type editorDidChangeFocusParams struct {
+	URI string `json:"uri"`
+}
 
-	uri := params.URI
+func editorDidChangeFocus(ctx *glsp.Context, params json.RawMessage) (any, error) {
+	var p editorDidChangeFocusParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+
+	uri := p.URI
 	filename := filepath.Base(uri)
 
-	_ = protocol316.Trace(ctx, protocol316.MessageTypeInfo, log("MplsEditorDidChangedFocus: "+uri))
+	_ = protocol.Trace(ctx, protocol.MessageTypeInfo, log("MplsEditorDidChangedFocus: "+uri))
 
 	// Get document state from registry
 	docState, exists := documentRegistry.Get(uri)
@@ -25,7 +32,7 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 		// Document not in registry, load from disk
 		content, err := loadDocument(uri)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		docState = &DocumentState{
@@ -39,14 +46,16 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 	// In single-page mode, always update regardless of --no-auto
 	// In multi-tab mode, respect ShouldAutoOpen
 	if previewserver.EnableTabs && !documentRegistry.ShouldAutoOpen() {
-		return nil
+		return nil, nil
 	}
 
 	html, meta := parser.HTML(docState.Content, uri, 0)
 
+	var err error
+
 	html, docState.PlantUMLs, err = plantuml.InsertPlantumlDiagram(html, true, docState.PlantUMLs)
 	if err != nil {
-		_ = protocol316.Trace(ctx, protocol316.MessageTypeWarning, log("MplsEditorDidChangeFocus - plantuml: "+err.Error()))
+		_ = protocol.Trace(ctx, protocol.MessageTypeWarning, log("MplsEditorDidChangeFocus - plantuml: "+err.Error()))
 	}
 
 	docState.HTML = html
@@ -66,5 +75,5 @@ func EditorDidChangeFocus(ctx *glsp.Context, params *protocol.EditorDidChangeFoc
 
 	previewServer.UpdateWithURI(filename, documentURI, html, meta)
 
-	return nil
+	return nil, nil
 }

@@ -1,7 +1,7 @@
 package mpls
 
 import (
-	protocol "github.com/mhersson/glsp/protocol_mpls"
+	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
 var Handler protocol.Handler
@@ -17,5 +17,7 @@ func init() {
 	Handler.TextDocumentDidClose = TextDocumentDidClose
 	Handler.WorkspaceExecuteCommand = WorkspaceExecuteCommand
 	Handler.WorkspaceDidChangeConfiguration = WorkspaceDidChangeConfiguration
-	Handler.MplsEditorDidChangeFocus = EditorDidChangeFocus
+	Handler.CustomRequest = map[string]protocol.CustomRequestHandler{
+		"mpls/editorDidChangeFocus": {Func: editorDidChangeFocus},
+	}
 }
