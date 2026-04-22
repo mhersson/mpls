@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mhersson/mpls)](https://goreportcard.com/report/github.com/mhersson/mpls)
 [![GitHub release](https://img.shields.io/github/v/release/mhersson/mpls)](https://github.com/mhersson/mpls/releases)
+[![CI](https://github.com/mhersson/mpls/actions/workflows/ci.yaml/badge.svg)](https://github.com/mhersson/mpls/actions/workflows/ci.yaml)
 
 Built using [GLSP](https://github.com/tliron/glsp) and
 [Goldmark](https://github.com/yuin/goldmark), and heavily inspired by
