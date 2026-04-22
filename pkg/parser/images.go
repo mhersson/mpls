@@ -151,8 +151,15 @@ func getImageDataURI(imagePath string) (string, error) {
 		return "", fmt.Errorf("cannot read image: %w", err)
 	}
 
-	// Detect MIME type
-	mimeType := http.DetectContentType(data)
+	// Detect MIME type. http.DetectContentType uses magic bytes and does not
+	// recognize SVG files (which are XML text). Check the file extension first
+	// so that .svg files are correctly typed as image/svg+xml.
+	var mimeType string
+	if strings.ToLower(filepath.Ext(imagePath)) == ".svg" {
+		mimeType = "image/svg+xml"
+	} else {
+		mimeType = http.DetectContentType(data)
+	}
 
 	// Create data URI
 	dataURI := fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(data))

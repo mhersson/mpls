@@ -46,6 +46,9 @@ available at
     perfect for focused editing.
   - **Multi-tab mode** (`--tabs`): Each file opens in its own browser tab for
     side-by-side viewing.
+- **Image Rendering**: Local images referenced in your Markdown are embedded
+  directly in the preview as base64 data URIs. Supported formats include PNG,
+  JPEG, GIF, WebP, and SVG.
 - **Presentation Mode**: Automatically transform your markdown into a slideshow
   presentation, or use explicit markers for full control over slide boundaries
   and layout.
