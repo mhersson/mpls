@@ -436,6 +436,90 @@ func TestConvertHTMLImages_SubdirectoryImage(t *testing.T) {
 	assert.Contains(t, result, "data:image/png;base64,")
 }
 
+func TestGetImageDataURI_SVG(t *testing.T) {
+	t.Parallel()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	svgData := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <circle cx="50" cy="50" r="40" fill="red"/>
+</svg>`)
+
+	imgPath := filepath.Join(tmpDir, "test.svg")
+	require.NoError(t, os.WriteFile(imgPath, svgData, 0o600))
+
+	dataURI, err := getImageDataURI(imgPath)
+	require.NoError(t, err)
+
+	assert.True(t, strings.HasPrefix(dataURI, "data:image/svg+xml;base64,"),
+		"expected SVG data URI prefix, got: %s", dataURI)
+
+	// Verify the base64 content decodes back to the original SVG
+	parts := strings.SplitN(dataURI, ",", 2)
+	require.Len(t, parts, 2, "expected data URI to have base64 content")
+
+	decoded, err := base64.StdEncoding.DecodeString(parts[1])
+	require.NoError(t, err)
+
+	assert.Equal(t, svgData, decoded)
+}
+
+func TestConvertHTMLImages_SVGAttributesPreserved(t *testing.T) {
+	t.Parallel()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	svgData := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <rect width="200" height="200" fill="blue"/>
+</svg>`)
+
+	imgPath := filepath.Join(tmpDir, "diagram.svg")
+	require.NoError(t, os.WriteFile(imgPath, svgData, 0o600))
+
+	input := `<img src="diagram.svg" alt="SVG diagram" class="svg-image" width="200" height="200">`
+
+	result := convertHTMLImages(input, tmpDir)
+
+	// Verify MIME type is correct
+	assert.Contains(t, result, "data:image/svg+xml;base64,")
+
+	// Verify all attributes are preserved
+	assert.Contains(t, result, `alt="SVG diagram"`)
+	assert.Contains(t, result, `class="svg-image"`)
+	assert.Contains(t, result, `width="200"`)
+	assert.Contains(t, result, `height="200"`)
+
+	// Verify original src is replaced
+	assert.NotContains(t, result, `src="diagram.svg"`)
+}
+
+func TestGetImageDataURI_SVGCaching(t *testing.T) { //nolint:paralleltest // Tests shared cache behavior
+	// Not parallel - tests shared cache behavior
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	svgData := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="5"/></svg>`)
+
+	imgPath := filepath.Join(tmpDir, "cached.svg")
+	require.NoError(t, os.WriteFile(imgPath, svgData, 0o600))
+
+	// First call - cache miss
+	dataURI1, err := getImageDataURI(imgPath)
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(dataURI1, "data:image/svg+xml;base64,"))
+
+	// Second call - should use cache and return same result
+	dataURI2, err := getImageDataURI(imgPath)
+	require.NoError(t, err)
+
+	assert.Equal(t, dataURI1, dataURI2, "expected cached SVG result to match first result")
+}
+
 func TestConvertHTMLImages_SelfClosingTag(t *testing.T) {
 	t.Parallel()
 
