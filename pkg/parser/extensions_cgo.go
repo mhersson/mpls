@@ -3,7 +3,6 @@
 package parser //nolint:revive // Package name does not conflict with stdlib (go/parser is different)
 
 import (
-	katex "github.com/FurqanSoftware/goldmark-katex"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	meta "github.com/yuin/goldmark-meta"
@@ -17,7 +16,7 @@ func defaultExtensions() []goldmark.Extender {
 			highlighting.WithStyle(CodeHighlightingStyle),
 		),
 		meta.Meta,
-		&katex.Extender{},
+		&mplsKatexExtender{},
 		&GitHubAlertExtension{},
 	}
 }
