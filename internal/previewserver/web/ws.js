@@ -513,6 +513,39 @@
   }
 
   // ==========================================================================
+  // Printing Module
+  // ==========================================================================
+
+  const printing = {
+    init() {
+      window.addEventListener("beforeprint", () => this.onBeforePrint());
+    },
+
+    onBeforePrint() {
+      // Presentation mode owns its own print lifecycle (see presentation.js).
+      if (window.presentation?.isActive()) return;
+
+      this.forceLoadImages();
+      this.closeModalIfOpen();
+    },
+
+    forceLoadImages() {
+      $$("img[data-src]").forEach((img) => {
+        if (!img.src && img.dataset.src) {
+          img.src = img.dataset.src;
+        }
+        img.removeAttribute("data-src");
+      });
+    },
+
+    closeModalIfOpen() {
+      if (modal.elements.modal?.style.display === "flex") {
+        modal.hide();
+      }
+    },
+  };
+
+  // ==========================================================================
   // Combined Operations
   // ==========================================================================
 
@@ -541,6 +574,7 @@
     const ws = new WebSocket("ws://localhost:%d/ws");
 
     modal.init();
+    printing.init();
     websocket.init(ws);
 
     window.addEventListener("load", async () => {
