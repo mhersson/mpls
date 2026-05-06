@@ -255,3 +255,24 @@ a:hover {
   color: var(--link-hover-color);
   text-decoration: underline;
 }
+
+@media print {
+  body > div:first-child,    /* header <details> wrapper from index.html */
+  #contentModal,
+  .preview-padding,
+  .heading-anchor {
+    display: none !important;
+  }
+
+  pre,
+  blockquote,
+  table,
+  figure,
+  .language-mermaid {
+    page-break-inside: avoid;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+}

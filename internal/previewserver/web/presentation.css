@@ -198,7 +198,7 @@
 
 /* Print styles for PDF export */
 @media print {
-    body > *:not(#presentation-container) {
+    body:has(#presentation-container.active) > *:not(#presentation-container) {
         display: none !important;
     }
 
