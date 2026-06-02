@@ -76,7 +76,48 @@ def new_func():
 ```
 
 <!-- /split -->
+
+<!-- slide -->
+
+# Incremental Reveal
+
+<!-- one-by-one -->
+- Item one
+- Item two
+- Item three
+- Item four
+<!-- /one-by-one -->
 ````
+
+### Incremental Reveal
+
+Use `<!-- one-by-one -->` to reveal list items one at a time during the
+presentation. Each top-level list item in the region becomes a separate step:
+
+````markdown
+<!-- slide -->
+
+## My slide header
+
+<!-- one-by-one -->
+- Item one
+- Item two
+- Item three
+- Item four
+<!-- /one-by-one -->
+````
+
+- Entering the slide (moving **forward**) shows the header and the **first item
+  only**. Each press of Next reveals the next item. Only after all items are
+  revealed does Next advance to the following slide.
+- Pressing **Prev** on a partially-revealed slide hides the last-revealed item.
+  Only when back at the first item does Prev move to the previous slide (entering
+  that slide with all its items revealed).
+- The closing `<!-- /one-by-one -->` marker is **optional** — if omitted the
+  region extends to the end of the slide.
+- Multiple `<!-- one-by-one -->` regions per slide are supported; their items are
+  revealed in order.
+- **Printing / PDF export** always shows all items, regardless of reveal state.
 
 ## Navigation
 
