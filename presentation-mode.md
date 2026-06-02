@@ -116,7 +116,8 @@ presentation. Each top-level list item in the region becomes a separate step:
 - The closing `<!-- /one-by-one -->` marker is **optional** — if omitted the
   region extends to the end of the slide.
 - Multiple `<!-- one-by-one -->` regions per slide are supported; their items are
-  revealed in order.
+  revealed in order. When using more than one region on a slide, close each with
+  `<!-- /one-by-one -->` so the first region does not extend over the next.
 - **Printing / PDF export** always shows all items, regardless of reveal state.
 
 ## Navigation
@@ -124,10 +125,10 @@ presentation. Each top-level list item in the region becomes a separate step:
 | Key                 | Action                   |
 | ------------------- | ------------------------ |
 | `p`                 | Toggle presentation mode |
-| `→` / `l` / `Space` | Next slide               |
-| `←` / `h`           | Previous slide           |
-| `↓` / `j`           | Next slide               |
-| `↑` / `k`           | Previous slide           |
+| `→` / `l` / `Space` | Next step / slide        |
+| `←` / `h`           | Previous step / slide    |
+| `↓` / `j`           | Next step / slide        |
+| `↑` / `k`           | Previous step / slide    |
 | `g` / `Home`        | First slide              |
 | `G` / `End`         | Last slide               |
 | `Escape`            | Exit presentation mode   |
