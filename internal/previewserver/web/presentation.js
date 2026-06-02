@@ -9,6 +9,7 @@
         active: false,
         slides: [],
         currentIndex: 0,
+        currentFragmentStep: 0,
         rawHtml: "",
         hideControlsTimer: null,
     };
@@ -55,9 +56,14 @@
             // Process split/column markers
             content = processSplitMarkers(content);
 
+            // Process one-by-one reveal markers (after center/split so structure is final)
+            const oneByOne = processOneByOneMarkers(content);
+            content = oneByOne.html;
+
             slides.push({
                 html: content,
                 index: slides.length,
+                fragmentCount: oneByOne.fragmentCount,
             });
         }
 
@@ -122,9 +128,79 @@
     }
 
     /**
-     * Render current slide
+     * Process <!-- one-by-one --> / <!-- /one-by-one --> markers
+     * Adds class="slide-fragment" to each top-level <li> inside each region.
+     * Returns { html, fragmentCount } so parseSlides can store the count per slide.
+     * The closing marker is optional; if absent the region extends to end of slide.
      */
-    function renderSlide() {
+    function processOneByOneMarkers(html) {
+        let fragmentCount = 0;
+        // Lazy match from the open marker to the optional close marker; if the close
+        // marker is absent the `$` alternative (end of string, no `m` flag) extends the
+        // region to the end of the slide.
+        const regionPattern = /<!--\s*one-by-one\s*-->([\s\S]*?)(?:<!--\s*\/one-by-one\s*-->|$)/gi;
+
+        const result = html.replace(regionPattern, function (_match, inner) {
+            // Tag each top-level <li> (not nested ones) with class="slide-fragment".
+            // We walk the string and track <ul>/<ol> depth, tagging only depth-1 <li> tags.
+            // depth is reset here so each region is counted independently. Assumes
+            // well-formed goldmark HTML (balanced tags, quoted attributes).
+            let depth = 0;
+            const tagged = inner.replace(/<(\/?)(ul|ol|li)(\s[^>]*)?>/gi, function (tag, slash, tagName, attrs) {
+                const lower = tagName.toLowerCase();
+                if (slash === '/') {
+                    // Closing tag
+                    if (lower === 'ul' || lower === 'ol') {
+                        depth--;
+                    }
+                    return tag;
+                }
+                // Opening tag
+                if (lower === 'ul' || lower === 'ol') {
+                    depth++;
+                    return tag;
+                }
+                // <li> at depth 1 (top-level list in this region)
+                if (lower === 'li' && depth === 1) {
+                    fragmentCount++;
+                    // Merge class if existing attrs already have one, else add fresh
+                    if (attrs && /\bclass\s*=/i.test(attrs)) {
+                        return '<li' + attrs.replace(/(\bclass\s*=\s*["'])/, '$1slide-fragment ') + '>';
+                    }
+                    return '<li class="slide-fragment"' + (attrs || '') + '>';
+                }
+                return tag;
+            });
+            // Emit tagged inner content without the comment markers
+            return tagged;
+        });
+
+        return { html: result, fragmentCount: fragmentCount };
+    }
+
+    /**
+     * Apply reveal state to fragment elements currently in the DOM.
+     * step is the index of the last revealed fragment (0-based).
+     * Fragments at index <= step are visible; index > step are hidden.
+     */
+    function applyFragmentState(step) {
+        if (!slideContent) return;
+        const fragments = slideContent.querySelectorAll('.slide-fragment');
+        for (let i = 0; i < fragments.length; i++) {
+            if (i <= step) {
+                fragments[i].classList.remove('slide-fragment--hidden');
+            } else {
+                fragments[i].classList.add('slide-fragment--hidden');
+            }
+        }
+    }
+
+    /**
+     * Render current slide.
+     * revealAll=true: reveal all fragments (entering backward or live-update).
+     * revealAll=false (default): reveal only the first fragment.
+     */
+    function renderSlide(revealAll) {
         if (!slideContent || state.slides.length === 0) {
             return;
         }
@@ -132,6 +208,15 @@
         const slide = state.slides[state.currentIndex];
         if (slide) {
             slideContent.innerHTML = slide.html;
+
+            // Set initial fragment reveal state
+            const fc = slide.fragmentCount || 0;
+            if (fc > 0) {
+                state.currentFragmentStep = revealAll ? fc - 1 : 0;
+                applyFragmentState(state.currentFragmentStep);
+            } else {
+                state.currentFragmentStep = 0;
+            }
 
             // Re-render mermaid diagrams if present and not already rendered
             if (window.mermaid) {
@@ -173,11 +258,17 @@
      * Update navigation button states
      */
     function updateNavButtons() {
+        const slide = state.slides[state.currentIndex];
+        const fc = (slide && slide.fragmentCount) || 0;
+
         if (prevBtn) {
-            prevBtn.disabled = state.currentIndex === 0;
+            // Prev is disabled only at the very beginning: first slide, first (or no) fragment revealed
+            prevBtn.disabled = state.currentIndex === 0 && state.currentFragmentStep <= 0;
         }
         if (nextBtn) {
-            nextBtn.disabled = state.currentIndex >= state.slides.length - 1;
+            // Next is disabled only at the very end: last slide with all fragments revealed
+            nextBtn.disabled = state.currentIndex >= state.slides.length - 1 &&
+                (fc === 0 || state.currentFragmentStep >= fc - 1);
         }
     }
 
@@ -185,9 +276,17 @@
      * Navigate to next slide
      */
     function nextSlide() {
-        if (state.currentIndex < state.slides.length - 1) {
+        const slide = state.slides[state.currentIndex];
+        const fc = (slide && slide.fragmentCount) || 0;
+
+        if (fc > 0 && state.currentFragmentStep < fc - 1) {
+            // Reveal the next fragment without changing slide
+            state.currentFragmentStep++;
+            applyFragmentState(state.currentFragmentStep);
+            updateNavButtons();
+        } else if (state.currentIndex < state.slides.length - 1) {
             state.currentIndex++;
-            renderSlide();
+            renderSlide(false);
         }
     }
 
@@ -195,9 +294,19 @@
      * Navigate to previous slide
      */
     function prevSlide() {
-        if (state.currentIndex > 0) {
+        const slide = state.slides[state.currentIndex];
+        const fc = (slide && slide.fragmentCount) || 0;
+
+        if (fc > 0 && state.currentFragmentStep > 0) {
+            // Hide the last-revealed fragment without changing slide
+            state.currentFragmentStep--;
+            applyFragmentState(state.currentFragmentStep);
+            updateNavButtons();
+        } else if (state.currentIndex > 0) {
             state.currentIndex--;
-            renderSlide();
+            // Entering a slide backward: reveal all its fragments so
+            // pressing back again starts hiding from the last one.
+            renderSlide(true);
         }
     }
 
@@ -206,7 +315,8 @@
      */
     function firstSlide() {
         state.currentIndex = 0;
-        renderSlide();
+        // Show only the first fragment: consistent with entering a slide forward.
+        renderSlide(false);
     }
 
     /**
@@ -215,7 +325,9 @@
     function lastSlide() {
         if (state.slides.length > 0) {
             state.currentIndex = state.slides.length - 1;
-            renderSlide();
+            // Reveal all fragments: pressing back will start hiding from the end,
+            // which is the expected behaviour for End/G.
+            renderSlide(true);
         }
     }
 
@@ -259,6 +371,7 @@
 
         state.active = true;
         state.currentIndex = 0;
+        state.currentFragmentStep = 0;
 
         if (container) {
             container.classList.add("active");
@@ -267,7 +380,7 @@
             checkbox.checked = true;
         }
 
-        renderSlide();
+        renderSlide(false);
         showControls();
 
         // Hide scrollbar on body
@@ -348,7 +461,8 @@
                 state.currentIndex = Math.min(state.currentIndex, state.slides.length - 1);
             }
 
-            renderSlide();
+            // Reveal all fragments so the author sees full content while editing
+            renderSlide(true);
         }
     }
 
