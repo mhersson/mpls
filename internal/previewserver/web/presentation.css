@@ -141,6 +141,11 @@
     align-self: stretch;
 }
 
+/* Fragment reveal: visibility:hidden reserves space so reveal doesn't shift layout */
+.slide-fragment--hidden {
+    visibility: hidden;
+}
+
 /* Navigation arrows */
 .slide-nav {
     position: fixed;
@@ -235,5 +240,10 @@
     .slide-nav,
     #slide-counter {
         display: none !important;
+    }
+
+    /* All fragments must appear in printed/PDF output */
+    .slide-fragment--hidden {
+        visibility: visible !important;
     }
 }
