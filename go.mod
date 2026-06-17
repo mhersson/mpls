@@ -1,6 +1,6 @@
 module github.com/mhersson/mpls
 
-go 1.25.10
+go 1.25.11
 
 require (
 	github.com/FurqanSoftware/goldmark-katex v0.0.0-20260328091149-1897eb7a41e4
