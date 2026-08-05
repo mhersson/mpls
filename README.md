@@ -1,7 +1,6 @@
 # Markdown Preview Language Server
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Go Report Card](https://goreportcard.com/badge/github.com/mhersson/mpls)](https://goreportcard.com/report/github.com/mhersson/mpls)
 [![GitHub release](https://img.shields.io/github/v/release/mhersson/mpls)](https://github.com/mhersson/mpls/releases)
 [![CI](https://github.com/mhersson/mpls/actions/workflows/ci.yaml/badge.svg)](https://github.com/mhersson/mpls/actions/workflows/ci.yaml)
 
@@ -37,8 +36,10 @@ available at
   Switch between markdown files in your editor and the preview updates
   automatically. _Note: Automatic preview updates on editor focus change require
   the editor to send custom LSP notifications. This works in Neovim and Emacs
-  (see configuration examples below), but is not currently supported in Helix as
-  it cannot send custom events to LSP servers._
+  (see configuration examples below). Upstream Helix does not support sending
+  these events, but I maintain a
+  [fork of Helix](https://github.com/mhersson/helix) that does, along with a
+  couple of open upstream PRs merged in (inline git blame and ghost text)._
 - **Interactive Link Navigation**: Click on markdown links in the preview to
   open the linked file in your editor. Navigate your documentation seamlessly
   between browser and editor.
