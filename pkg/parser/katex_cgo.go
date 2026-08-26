@@ -52,10 +52,12 @@ func (r *mplsKatexRenderer) renderInline(w util.BufWriter, _ []byte, n ast.Node,
 	}
 
 	node := n.(*katex.Inline)
+
 	prefix := "i:"
 	if node.Display {
 		prefix = "b:"
 	}
+
 	key := prefix + string(node.Equation)
 
 	if cached, ok := katexCacheGet(key); ok {
