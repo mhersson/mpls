@@ -25,7 +25,7 @@ import (
 	"github.com/mhersson/mpls/pkg/plantuml"
 )
 
-// Current version of katex used: 0.16.25 (https://cdn.jsdelivr.net/npm/katex@0.16.25/dist/katex.min.css)
+// Current version of katex used: 0.18.1 (https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css)
 // Current version of mermaid used: 11.12.1 (https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.min.js)
 
 var (

@@ -153,8 +153,9 @@ func TestKaTeXCache_Integration_InlineAndDisplayRenderOnceEach(t *testing.T) { /
 		"no new renders expected; both formulas cached")
 }
 
-// TestKaTeXCache_HTMLNoDiff verifies that the custom extender produces the
-// same HTML structure as the upstream extender for inline and block formulas.
+// TestKaTeXCache_HTMLNoDiff verifies the custom extender renders inline and
+// block formulas, and that the block form keeps our <div> wrapper. Upstream
+// no longer emits one.
 func TestKaTeXCache_HTMLNoDiff(t *testing.T) { //nolint:paralleltest // uses global extensions cache
 	ClearKaTeXCache()
 	resetExtensionsCache()

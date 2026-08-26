@@ -3,7 +3,7 @@ module github.com/mhersson/mpls
 go 1.25.12
 
 require (
-	github.com/FurqanSoftware/goldmark-katex v0.0.0-20260328091149-1897eb7a41e4
+	github.com/FurqanSoftware/goldmark-katex v0.0.0-20260813161535-d0f6370693c2
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -44,12 +44,11 @@ require (
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
-	golang.org/x/tools v0.43.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.70.0 // indirect
-	modernc.org/libquickjs v0.12.4 // indirect
+	modernc.org/libc v1.74.3 // indirect
+	modernc.org/libquickjs v0.12.10 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/quickjs v0.17.1 // indirect
+	modernc.org/quickjs v0.22.0 // indirect
 )

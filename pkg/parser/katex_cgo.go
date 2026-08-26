@@ -24,9 +24,14 @@ type mplsKatexExtender struct {
 }
 
 func (e *mplsKatexExtender) Extend(m goldmark.Markdown) {
-	m.Parser().AddOptions(parser.WithInlineParsers(
-		util.Prioritized(&katex.Parser{}, 0),
-	))
+	m.Parser().AddOptions(
+		parser.WithBlockParsers(
+			util.Prioritized(&katex.BlockParser{}, 50),
+		),
+		parser.WithInlineParsers(
+			util.Prioritized(&katex.Parser{}, 0),
+		),
+	)
 	m.Renderer().AddOptions(renderer.WithNodeRenderers(
 		util.Prioritized(&mplsKatexRenderer{throwOnError: e.ThrowOnError}, 0),
 	))
@@ -47,7 +52,13 @@ func (r *mplsKatexRenderer) renderInline(w util.BufWriter, _ []byte, n ast.Node,
 	}
 
 	node := n.(*katex.Inline)
-	key := "i:" + string(node.Equation)
+
+	prefix := "i:"
+	if node.Display {
+		prefix = "b:"
+	}
+
+	key := prefix + string(node.Equation)
 
 	if cached, ok := katexCacheGet(key); ok {
 		_, _ = w.Write(cached)
@@ -57,12 +68,12 @@ func (r *mplsKatexRenderer) renderInline(w util.BufWriter, _ []byte, n ast.Node,
 
 	var buf bytes.Buffer
 
-	if err := katex.Render(&buf, node.Equation, false, r.throwOnError); err != nil {
+	if err := katex.Render(&buf, node.Equation, node.Display, r.throwOnError); err != nil {
 		return ast.WalkStop, err
 	}
 
 	if testHookRender != nil {
-		testHookRender(node.Equation, false)
+		testHookRender(node.Equation, node.Display)
 	}
 
 	html := buf.Bytes()
@@ -72,13 +83,15 @@ func (r *mplsKatexRenderer) renderInline(w util.BufWriter, _ []byte, n ast.Node,
 	return ast.WalkContinue, nil
 }
 
-func (r *mplsKatexRenderer) renderBlock(w util.BufWriter, _ []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *mplsKatexRenderer) renderBlock(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 
 	node := n.(*katex.Block)
-	key := "b:" + string(node.Equation)
+	equation := node.Equation(source)
+
+	key := "b:" + string(equation)
 
 	if cached, ok := katexCacheGet(key); ok {
 		_, _ = w.WriteString("<div>")
@@ -90,12 +103,12 @@ func (r *mplsKatexRenderer) renderBlock(w util.BufWriter, _ []byte, n ast.Node, 
 
 	var buf bytes.Buffer
 
-	if err := katex.Render(&buf, node.Equation, true, r.throwOnError); err != nil {
+	if err := katex.Render(&buf, equation, true, r.throwOnError); err != nil {
 		return ast.WalkStop, err
 	}
 
 	if testHookRender != nil {
-		testHookRender(node.Equation, true)
+		testHookRender(equation, true)
 	}
 
 	html := buf.Bytes()
