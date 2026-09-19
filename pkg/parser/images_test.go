@@ -520,6 +520,187 @@ func TestGetImageDataURI_SVGCaching(t *testing.T) { //nolint:paralleltest // Tes
 	assert.Equal(t, dataURI1, dataURI2, "expected cached SVG result to match first result")
 }
 
+func TestConvertHTMLImages_PercentEncodedPathWithSpace(t *testing.T) {
+	t.Parallel()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	// Create a subdirectory with a space in its name
+	subDir := filepath.Join(tmpDir, "test 2")
+	require.NoError(t, os.MkdirAll(subDir, 0o750))
+
+	pngData := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+		0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+		0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+
+	imgPath := filepath.Join(subDir, "image.png")
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
+
+	t.Run("percent-encoded space", func(t *testing.T) {
+		t.Parallel()
+
+		input := `<img src="test%202/image.png" alt="test">`
+		result := convertHTMLImages(input, tmpDir)
+
+		assert.Contains(t, result, "data:image/png;base64,")
+		assert.NotContains(t, result, `src="test%202/image.png"`)
+	})
+
+	t.Run("literal space", func(t *testing.T) {
+		t.Parallel()
+
+		input := `<img src="test 2/image.png" alt="test">`
+		result := convertHTMLImages(input, tmpDir)
+
+		assert.Contains(t, result, "data:image/png;base64,")
+		assert.NotContains(t, result, `src="test 2/image.png"`)
+	})
+}
+
+func TestConvertHTMLImages_InvalidPercentEncoding(t *testing.T) {
+	t.Parallel()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	// Create a file whose name actually contains the literal "%zz" string.
+	// url.PathUnescape("%zz") returns an error, so the code falls back to the
+	// raw path portion and tries to stat "%zz" on disk.
+	fileName := "%zz.png"
+	imgPath := filepath.Join(tmpDir, fileName)
+
+	pngData := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+		0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+		0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
+
+	// src with invalid percent encoding (%zz is not a valid hex escape).
+	// The code should fall back to the raw path and resolve the file.
+	input := `<img src="%zz.png" alt="test">`
+	result := convertHTMLImages(input, tmpDir)
+
+	assert.Contains(t, result, "data:image/png;base64,")
+	assert.NotContains(t, result, `src="%zz.png"`)
+}
+
+func TestConvertHTMLImages_FragmentAndQuerySuffix(t *testing.T) {
+	t.Parallel()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	pngData := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+		0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+		0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+
+	imgPath := filepath.Join(tmpDir, "img.png")
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
+
+	t.Run("fragment suffix is stripped", func(t *testing.T) {
+		t.Parallel()
+
+		ClearImageCache()
+
+		input := `<img src="img.png#frag" alt="fragment">`
+		result := convertHTMLImages(input, tmpDir)
+
+		assert.Contains(t, result, "data:image/png;base64,")
+	})
+
+	t.Run("query suffix is stripped", func(t *testing.T) {
+		t.Parallel()
+
+		ClearImageCache()
+
+		input := `<img src="img.png?v=1" alt="query">`
+		result := convertHTMLImages(input, tmpDir)
+
+		assert.Contains(t, result, "data:image/png;base64,")
+	})
+}
+
+func TestConvertHTMLImages_LiteralHashInFilename(t *testing.T) {
+	t.Parallel()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	pngData := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+		0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+		0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+
+	// Create a file whose name literally contains '#'.
+	hashFileName := "a#b.png"
+	hashImgPath := filepath.Join(tmpDir, hashFileName)
+	require.NoError(t, os.WriteFile(hashImgPath, pngData, 0o600))
+
+	t.Run("percent-encoded hash resolves", func(t *testing.T) {
+		t.Parallel()
+
+		ClearImageCache()
+
+		// a%23b.png is the percent-encoded form of a#b.png.
+		input := `<img src="a%23b.png" alt="encoded hash">`
+		result := convertHTMLImages(input, tmpDir)
+
+		assert.Contains(t, result, "data:image/png;base64,")
+	})
+
+	t.Run("literal hash falls back to raw token", func(t *testing.T) {
+		t.Parallel()
+
+		ClearImageCache()
+
+		// Because the #/? split treats everything after '#' as a fragment,
+		// src="a#b.png" is resolved as looking for "a" on disk, which fails
+		// (there is no bare "a" file). The tag is returned unchanged.
+		input := `<img src="a#b.png" alt="literal hash">`
+		result := convertHTMLImages(input, tmpDir)
+
+		assert.NotContains(t, result, "data:image/png;base64,")
+		assert.Contains(t, result, `src="a#b.png"`)
+		assert.Contains(t, result, `alt="literal hash"`)
+	})
+}
+
 func TestConvertHTMLImages_SelfClosingTag(t *testing.T) {
 	t.Parallel()
 

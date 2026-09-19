@@ -219,6 +219,44 @@ func TestHTML_ExternalImage(t *testing.T) { //nolint:paralleltest // Modifies gl
 	assert.Contains(t, html, `src="https://example.com/image.png"`)
 }
 
+func TestHTML_ImagePercentEncodedPath(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache
+	resetExtensionsCache()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	// Create _res/test 2/image.png
+	subDir := filepath.Join(tmpDir, "_res", "test 2")
+	require.NoError(t, os.MkdirAll(subDir, 0o750))
+
+	pngData := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+		0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+		0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+
+	imgPath := filepath.Join(subDir, "image.png")
+	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
+
+	// Goldmark produces <img src="_res/test%202/image.png"> from
+	// ![](_res/test%202/image.png). processImgTag must percent-decode
+	// the src before resolving it against the document directory.
+	markdown := "![](_res/test%202/image.png)"
+	uri := "file://" + filepath.Join(tmpDir, "doc.md")
+
+	html, _ := HTML(markdown, uri, 0)
+
+	// The image should be converted to a data URI
+	assert.Contains(t, html, "data:image/png;base64,")
+}
+
 func TestHTML_Lists(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache
 	resetExtensionsCache()
 
