@@ -85,35 +85,40 @@ func processImgTag(token html.Token, docDir string) string {
 		return token.String()
 	}
 
-	// Percent-decode the src value before resolving the filesystem path.
-	// Split off any #fragment or ?query suffix so that img.png#frag and
-	// img.png?v=1 resolve to the img.png file on disk. This matches browser
-	// URL-resolution semantics rather than goldmark's raw-handling pipeline.
-	// The tradeoff: a file whose name literally contains '#' or '?' must be
-	// percent-encoded (%23 / %3F) in the src attribute to be referenced.
-	pathPart := srcValue
+	// Try the full src first so files whose path literally contains '#' or
+	// '?' (C#/arch.png) keep resolving. Only when that file does not exist is
+	// the suffix treated as a #fragment or ?query, so that img.png#frag and
+	// img.png?v=1 resolve to img.png.
+	candidates := []string{srcValue}
 	if idx := strings.IndexAny(srcValue, "#?"); idx != -1 {
-		pathPart = srcValue[:idx]
+		candidates = append(candidates, srcValue[:idx])
 	}
 
-	decodedPath, err := url.PathUnescape(pathPart)
-	if err != nil {
-		// Fall back to the raw path portion on decode error (e.g. literal %zz).
-		decodedPath = pathPart
+	var dataURI string
+
+	for _, candidate := range candidates {
+		// Goldmark percent-encodes the destination (spaces, non-ASCII), so
+		// decode before touching the filesystem. On decode error (e.g. a
+		// literal %zz) the raw value is used.
+		if decoded, err := url.PathUnescape(candidate); err == nil {
+			candidate = decoded
+		}
+
+		// Resolve the path relative to the document directory
+		imagePath := candidate
+		if !filepath.IsAbs(imagePath) {
+			imagePath = filepath.Join(docDir, candidate)
+		}
+
+		if uri, err := getImageDataURI(filepath.Clean(imagePath)); err == nil {
+			dataURI = uri
+
+			break
+		}
 	}
 
-	// Resolve the path relative to the document directory
-	imagePath := decodedPath
-	if !filepath.IsAbs(imagePath) {
-		imagePath = filepath.Join(docDir, decodedPath)
-	}
-
-	imagePath = filepath.Clean(imagePath)
-
-	// Convert to data URI
-	dataURI, err := getImageDataURI(imagePath)
-	if err != nil {
-		// Log warning but leave src unchanged for browser to handle
+	if dataURI == "" {
+		// Leave src unchanged for browser to handle
 		return token.String()
 	}
 

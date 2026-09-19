@@ -242,19 +242,31 @@ func TestHTML_ImagePercentEncodedPath(t *testing.T) { //nolint:paralleltest // M
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 
-	imgPath := filepath.Join(subDir, "image.png")
-	require.NoError(t, os.WriteFile(imgPath, pngData, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, "image.png"), pngData, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "blåbær.png"), pngData, 0o600))
 
-	// Goldmark produces <img src="_res/test%202/image.png"> from
-	// ![](_res/test%202/image.png). processImgTag must percent-decode
-	// the src before resolving it against the document directory.
-	markdown := "![](_res/test%202/image.png)"
 	uri := "file://" + filepath.Join(tmpDir, "doc.md")
 
-	html, _ := HTML(markdown, uri, 0)
+	// Goldmark percent-encodes the destination, so each of these produces an
+	// <img> whose src must be decoded before it is resolved against the
+	// document directory.
+	tests := []struct {
+		name     string
+		markdown string
+	}{
+		{name: "percent-encoded space", markdown: "![](_res/test%202/image.png)"},
+		// CommonMark requires <...> around a destination containing spaces.
+		{name: "angle-bracketed literal space", markdown: "![](<_res/test 2/image.png>)"},
+		{name: "non-ASCII filename", markdown: "![](blåbær.png)"},
+	}
 
-	// The image should be converted to a data URI
-	assert.Contains(t, html, "data:image/png;base64,")
+	for _, tt := range tests { //nolint:paralleltest // Modifies global extensions cache
+		t.Run(tt.name, func(t *testing.T) {
+			html, _ := HTML(tt.markdown, uri, 0)
+
+			assert.Contains(t, html, "data:image/png;base64,")
+		})
+	}
 }
 
 func TestHTML_Lists(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache

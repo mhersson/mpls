@@ -667,37 +667,50 @@ func TestConvertHTMLImages_LiteralHashInFilename(t *testing.T) {
 		0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
 
-	// Create a file whose name literally contains '#'.
-	hashFileName := "a#b.png"
-	hashImgPath := filepath.Join(tmpDir, hashFileName)
-	require.NoError(t, os.WriteFile(hashImgPath, pngData, 0o600))
+	// Create files whose path literally contains '#'.
+	for _, name := range []string{"a#b.png", "shot #1.png", filepath.Join("C#", "arch.png")} {
+		hashImgPath := filepath.Join(tmpDir, name)
+		require.NoError(t, os.MkdirAll(filepath.Dir(hashImgPath), 0o750))
+		require.NoError(t, os.WriteFile(hashImgPath, pngData, 0o600))
+	}
 
-	t.Run("percent-encoded hash resolves", func(t *testing.T) {
-		t.Parallel()
-
-		ClearImageCache()
-
+	tests := []struct {
+		name string
+		src  string
+	}{
 		// a%23b.png is the percent-encoded form of a#b.png.
-		input := `<img src="a%23b.png" alt="encoded hash">`
-		result := convertHTMLImages(input, tmpDir)
+		{name: "percent-encoded hash resolves", src: "a%23b.png"},
+		// The full src is tried before '#' is treated as a fragment separator.
+		{name: "literal hash resolves", src: "a#b.png"},
+		{name: "literal hash in directory resolves", src: "C#/arch.png"},
+		// Goldmark emits this src for ![](<shot #1.png>).
+		{name: "literal hash with encoded space resolves", src: "shot%20#1.png"},
+	}
 
-		assert.Contains(t, result, "data:image/png;base64,")
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("literal hash falls back to raw token", func(t *testing.T) {
+			ClearImageCache()
+
+			input := `<img src="` + tt.src + `" alt="hash">`
+			result := convertHTMLImages(input, tmpDir)
+
+			assert.Contains(t, result, "data:image/png;base64,")
+		})
+	}
+
+	t.Run("missing file falls back to raw token", func(t *testing.T) {
 		t.Parallel()
 
 		ClearImageCache()
 
-		// Because the #/? split treats everything after '#' as a fragment,
-		// src="a#b.png" is resolved as looking for "a" on disk, which fails
-		// (there is no bare "a" file). The tag is returned unchanged.
-		input := `<img src="a#b.png" alt="literal hash">`
+		input := `<img src="missing#frag.png" alt="missing">`
 		result := convertHTMLImages(input, tmpDir)
 
 		assert.NotContains(t, result, "data:image/png;base64,")
-		assert.Contains(t, result, `src="a#b.png"`)
-		assert.Contains(t, result, `alt="literal hash"`)
+		assert.Contains(t, result, `src="missing#frag.png"`)
+		assert.Contains(t, result, `alt="missing"`)
 	})
 }
 
