@@ -219,6 +219,56 @@ func TestHTML_ExternalImage(t *testing.T) { //nolint:paralleltest // Modifies gl
 	assert.Contains(t, html, `src="https://example.com/image.png"`)
 }
 
+func TestHTML_ImagePercentEncodedPath(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache
+	resetExtensionsCache()
+
+	ClearImageCache()
+
+	tmpDir := t.TempDir()
+
+	// Create _res/test 2/image.png
+	subDir := filepath.Join(tmpDir, "_res", "test 2")
+	require.NoError(t, os.MkdirAll(subDir, 0o750))
+
+	pngData := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+		0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+		0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, "image.png"), pngData, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "blåbær.png"), pngData, 0o600))
+
+	uri := "file://" + filepath.Join(tmpDir, "doc.md")
+
+	// Goldmark percent-encodes the destination, so each of these produces an
+	// <img> whose src must be decoded before it is resolved against the
+	// document directory.
+	tests := []struct {
+		name     string
+		markdown string
+	}{
+		{name: "percent-encoded space", markdown: "![](_res/test%202/image.png)"},
+		// CommonMark requires <...> around a destination containing spaces.
+		{name: "angle-bracketed literal space", markdown: "![](<_res/test 2/image.png>)"},
+		{name: "non-ASCII filename", markdown: "![](blåbær.png)"},
+	}
+
+	for _, tt := range tests { //nolint:paralleltest // Modifies global extensions cache
+		t.Run(tt.name, func(t *testing.T) {
+			html, _ := HTML(tt.markdown, uri, 0)
+
+			assert.Contains(t, html, "data:image/png;base64,")
+		})
+	}
+}
+
 func TestHTML_Lists(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache
 	resetExtensionsCache()
 

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,18 +85,40 @@ func processImgTag(token html.Token, docDir string) string {
 		return token.String()
 	}
 
-	// Resolve the path relative to the document directory
-	imagePath := srcValue
-	if !filepath.IsAbs(imagePath) {
-		imagePath = filepath.Join(docDir, srcValue)
+	// Try the full src first so files whose path literally contains '#' or
+	// '?' (C#/arch.png) keep resolving. Only when that file does not exist is
+	// the suffix treated as a #fragment or ?query, so that img.png#frag and
+	// img.png?v=1 resolve to img.png.
+	candidates := []string{srcValue}
+	if idx := strings.IndexAny(srcValue, "#?"); idx != -1 {
+		candidates = append(candidates, srcValue[:idx])
 	}
 
-	imagePath = filepath.Clean(imagePath)
+	var dataURI string
 
-	// Convert to data URI
-	dataURI, err := getImageDataURI(imagePath)
-	if err != nil {
-		// Log warning but leave src unchanged for browser to handle
+	for _, candidate := range candidates {
+		// Goldmark percent-encodes the destination (spaces, non-ASCII), so
+		// decode before touching the filesystem. On decode error (e.g. a
+		// literal %zz) the raw value is used.
+		if decoded, err := url.PathUnescape(candidate); err == nil {
+			candidate = decoded
+		}
+
+		// Resolve the path relative to the document directory
+		imagePath := candidate
+		if !filepath.IsAbs(imagePath) {
+			imagePath = filepath.Join(docDir, candidate)
+		}
+
+		if uri, err := getImageDataURI(filepath.Clean(imagePath)); err == nil {
+			dataURI = uri
+
+			break
+		}
+	}
+
+	if dataURI == "" {
+		// Leave src unchanged for browser to handle
 		return token.String()
 	}
 
