@@ -9,12 +9,12 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/tliron/commonlog v0.2.21
 	github.com/tliron/glsp v0.2.3-0.20250617204849-59d6e3155c81
-	github.com/yuin/goldmark v1.8.6
+	github.com/yuin/goldmark v1.8.7
 	github.com/yuin/goldmark-emoji v1.0.6
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	github.com/yuin/goldmark-meta v1.1.0
 	go.abhg.dev/goldmark/wikilink v0.6.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 )
 
 require (
