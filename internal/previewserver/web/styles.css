@@ -173,6 +173,29 @@ pre.bpmn-source-rendered {
   display: none;
 }
 
+/* Enlarged BPMN diagram. Light for the same watermark reason as the card. */
+#bpmnContent {
+  display: none;
+  position: relative;
+  width: 95vw;
+  /* Leaves room above it for the close button. */
+  height: calc(100vh - 140px);
+  background-color: #ffffff;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Top-left, clear of the watermark in the bottom-right corner. */
+#bpmnHint {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  z-index: 1;
+  font-size: 12px;
+  color: #666666;
+  pointer-events: none;
+}
+
 table,
 th,
 td {

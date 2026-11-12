@@ -11,6 +11,8 @@
     SCROLL_RETRY_DELAY: 50,
     MAX_SCROLL_RETRIES: 10,
     RESIZE_DEBOUNCE_DELAY: 250,
+    // Largest zoom for a BPMN diagram opened in the modal.
+    BPMN_MODAL_MAX_SCALE: 2,
   };
 
   // ==========================================================================
@@ -138,7 +140,7 @@
         }
         this.loading = new Promise((resolve, reject) => {
           const script = document.createElement("script");
-          script.src = "/bpmn/bpmn-viewer.production.min.js";
+          script.src = "/bpmn/bpmn-navigated-viewer.production.min.js";
           script.onload = resolve;
           script.onerror = () => {
             this.loading = null;
@@ -157,10 +159,40 @@
       card.innerHTML = `<strong>BPMN Error:</strong><pre>${escapeHtml(error.message || String(error))}</pre>`;
     },
 
+    isFree(viewer) {
+      return (
+        !viewer._mplsInModal &&
+        (!viewer._mplsCard || !viewer._mplsCard.isConnected)
+      );
+    },
+
     // Takes a cached viewer for this source that is not shown anywhere else.
     takeViewer(source) {
       const pool = this.viewers.get(source) || [];
-      return pool.find((v) => !v._mplsCard || !v._mplsCard.isConnected);
+      return pool.find((v) => this.isFree(v));
+    },
+
+    // Creates a NavigatedViewer whose panning and zooming are off until it is
+    // shown in the modal: an inline card cannot be dragged, and the mouse
+    // wheel over it scrolls the page.
+    createViewer(card) {
+      // ZoomScroll re-reads this object on every mouseover, so it is kept
+      // and flipped by setNavigation instead of toggling ZoomScroll once.
+      const zoomScroll = { enabled: false };
+      const viewer = new window.BpmnJS({ container: card, zoomScroll });
+      viewer._mplsZoomScroll = zoomScroll;
+      // Returning false stops MoveCanvas (priority 500) from starting a drag.
+      viewer
+        .get("eventBus")
+        .on("element.mousedown", 1500, () =>
+          viewer._mplsInModal ? undefined : false,
+        );
+      return viewer;
+    },
+
+    setNavigation(viewer, enabled) {
+      viewer._mplsZoomScroll.enabled = enabled;
+      viewer.get("zoomScroll").toggle(enabled);
     },
 
     cacheViewer(source, viewer) {
@@ -176,7 +208,7 @@
         if (total <= this.MAX_CACHED_VIEWERS) break;
         for (const viewer of pool.slice()) {
           if (total <= this.MAX_CACHED_VIEWERS) break;
-          if (viewer._mplsCard && viewer._mplsCard.isConnected) continue;
+          if (!this.isFree(viewer)) continue;
           viewer.destroy();
           pool.splice(pool.indexOf(viewer), 1);
           total--;
@@ -185,10 +217,12 @@
       }
     },
 
-    // Sizes the card to the diagram and draws the diagram centred above the
-    // watermark strip, scaled down (never up) to fit the card width.
-    fit(card, viewer) {
-      const width = card.clientWidth;
+    // Draws the diagram centred in `box`, above the watermark strip, at
+    // most at `maxScale`. An inline card (fixedHeight false) fits the width
+    // and takes the height of the diagram; the modal (fixedHeight true) keeps
+    // its size and fits the diagram in both directions.
+    fit(box, viewer, fixedHeight = false, maxScale = 1) {
+      const width = box.clientWidth;
       if (!width) return;
 
       const canvas = viewer.get("canvas");
@@ -197,14 +231,25 @@
       if (!inner.width || !inner.height) return;
 
       const pad = this.PADDING;
-      const scale = Math.min(1, (width - 2 * pad) / inner.width);
-      const height = Math.ceil(inner.height * scale + pad + this.WATERMARK_SPACE);
+      const reserved = pad + this.WATERMARK_SPACE;
+      let scale = Math.min(maxScale, (width - 2 * pad) / inner.width);
+      let height;
+      let top = pad;
 
-      card.style.height = height + "px";
-      canvas.resized();
+      if (fixedHeight) {
+        height = box.clientHeight;
+        scale = Math.min(scale, (height - reserved) / inner.height);
+        top = pad + (height - reserved - inner.height * scale) / 2;
+      } else {
+        height = Math.ceil(inner.height * scale + reserved);
+        box.style.height = height + "px";
+        canvas.resized();
+      }
+      if (!(scale > 0)) return;
+
       canvas.viewbox({
         x: inner.x - (width / scale - inner.width) / 2,
-        y: inner.y - pad / scale,
+        y: inner.y - top / scale,
         width: width / scale,
         height: height / scale,
       });
@@ -212,8 +257,17 @@
 
     refit() {
       $$(".bpmn-diagram").forEach((card) => {
-        if (card._mplsViewer) this.fit(card, card._mplsViewer);
+        const viewer = card._mplsViewer;
+        if (viewer && !viewer._mplsInModal) this.fit(card, viewer);
       });
+      if (modal.bpmn) {
+        this.fit(
+          modal.elements.bpmnContent,
+          modal.bpmn.viewer,
+          true,
+          CONFIG.BPMN_MODAL_MAX_SCALE,
+        );
+      }
     },
 
     async render(root = document) {
@@ -260,7 +314,7 @@
             viewer._mplsCard = card;
             viewer.attachTo(card);
           } else {
-            viewer = new window.BpmnJS({ container: card });
+            viewer = this.createViewer(card);
             viewer._mplsCard = card;
             const { warnings } = await viewer.importXML(source);
             if (warnings && warnings.length > 0) {
@@ -367,19 +421,26 @@
       closeBtn: null,
       mermaidContent: null,
       imageContent: null,
+      bpmnContent: null,
     },
+
+    // The BPMN diagram shown in the modal: { card, viewer }. Its live viewer
+    // (and with it the bpmn.io watermark) is moved into the modal and back.
+    bpmn: null,
 
     init() {
       this.elements.modal = $("contentModal");
       this.elements.closeBtn = $("closeModal");
       this.elements.mermaidContent = $("mermaidContent");
       this.elements.imageContent = $("imageContent");
+      this.elements.bpmnContent = $("bpmnContent");
 
       if (
         !this.elements.modal ||
         !this.elements.closeBtn ||
         !this.elements.mermaidContent ||
-        !this.elements.imageContent
+        !this.elements.imageContent ||
+        !this.elements.bpmnContent
       ) {
         console.warn("Modal elements not found");
         return false;
@@ -407,9 +468,12 @@
     },
 
     show(type, content) {
-      const { mermaidContent, imageContent, modal: modalEl } = this.elements;
+      const { mermaidContent, imageContent, bpmnContent, modal: modalEl } =
+        this.elements;
 
       // Reset modal content
+      this.releaseBpmn();
+      bpmnContent.style.display = "none";
       mermaidContent.style.display = "none";
       imageContent.style.display = "none";
       mermaidContent.innerHTML = "";
@@ -426,10 +490,45 @@
       }
 
       modalEl.style.display = "flex";
+
+      if (type === "bpmn" && content._mplsViewer) {
+        // The modal must be visible before the diagram can be measured.
+        const viewer = content._mplsViewer;
+        bpmnContent.style.display = "block";
+        viewer._mplsInModal = true;
+        viewer.attachTo(bpmnContent);
+        bpmnRenderer.setNavigation(viewer, true);
+        this.bpmn = { card: content, viewer };
+        bpmnRenderer.fit(
+          bpmnContent,
+          viewer,
+          true,
+          CONFIG.BPMN_MODAL_MAX_SCALE,
+        );
+      }
+    },
+
+    // Moves the BPMN viewer from the modal back to its card. If the card was
+    // replaced by a content update meanwhile, the viewer is only detached and
+    // stays cached for reuse.
+    releaseBpmn() {
+      if (!this.bpmn) return;
+      const { card, viewer } = this.bpmn;
+      this.bpmn = null;
+      viewer._mplsInModal = false;
+      bpmnRenderer.setNavigation(viewer, false);
+      if (card.isConnected && viewer._mplsCard === card) {
+        viewer.attachTo(card);
+        bpmnRenderer.fit(card, viewer);
+      } else {
+        viewer.detach();
+      }
+      this.elements.bpmnContent.style.display = "none";
     },
 
     hide() {
       const { modal: modalEl, mermaidContent, imageContent } = this.elements;
+      this.releaseBpmn();
       modalEl.style.display = "none";
       mermaidContent.innerHTML = "";
       imageContent.src = "";
@@ -455,6 +554,36 @@
           div._modalHandlerAttached = true;
           div.style.cursor = "pointer";
         }
+      });
+
+      // Setup BPMN modals. A click on the bpmn.io watermark keeps its own
+      // behaviour (the bpmn.io notice) and does not open the modal.
+      $$(".bpmn-diagram").forEach((card) => {
+        if (!card._mplsViewer || card._modalHandlerAttached) return;
+        // A drag across the card that ends in a click is not a click.
+        // Capture phase: diagram-js stops mousedown propagation on shapes.
+        let down = null;
+        card.addEventListener(
+          "mousedown",
+          (event) => {
+            down = { x: event.clientX, y: event.clientY };
+          },
+          true,
+        );
+        card._modalHandler = (event) => {
+          if (event.target.closest(".bjs-powered-by")) return;
+          if (
+            down &&
+            Math.hypot(event.clientX - down.x, event.clientY - down.y) > 5
+          ) {
+            return;
+          }
+          this.show("bpmn", card);
+        };
+        card.addEventListener("click", card._modalHandler);
+        card._modalHandlerAttached = true;
+        card.style.cursor = "zoom-in";
+        card.title = "Click to enlarge";
       });
     },
   };

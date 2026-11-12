@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetChromaStyleForTheme(t *testing.T) {
@@ -277,7 +278,7 @@ func TestIsStaticAsset(t *testing.T) {
 		{name: "theme file", path: "/themes/dark.css", expected: true},
 		{name: "themes root", path: "/themes/", expected: true},
 		// bpmn-js paths
-		{name: "bpmn viewer", path: "/bpmn/bpmn-viewer.production.min.js", expected: true},
+		{name: "bpmn viewer", path: "/bpmn/bpmn-navigated-viewer.production.min.js", expected: true},
 		{name: "bpmn css", path: "/bpmn/bpmn-js.css", expected: true},
 		// Non-static paths
 		{name: "root path", path: "/", expected: false},
@@ -408,12 +409,12 @@ func TestConvertMetaToHTMLTable_SortedKeys(t *testing.T) {
 func TestBpmnWatermarkPresent(t *testing.T) {
 	t.Parallel()
 
-	viewer, err := bpmnFS.ReadFile("web/bpmn/bpmn-viewer.production.min.js")
-	assert.NoError(t, err)
+	viewer, err := bpmnFS.ReadFile("web/bpmn/bpmn-navigated-viewer.production.min.js")
+	require.NoError(t, err)
 	assert.Contains(t, string(viewer), `class="bjs-powered-by"`)
 	assert.Contains(t, string(viewer), `href="http://bpmn.io"`)
 
 	license, err := bpmnFS.ReadFile("web/bpmn/LICENSE")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(license), "MUST NOT be")
 }

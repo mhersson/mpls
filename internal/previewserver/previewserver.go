@@ -28,7 +28,7 @@ import (
 // Current version of katex used: 0.18.1 (https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css)
 // Current version of mermaid used: 11.12.1 (https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.min.js)
 // Current version of bpmn-js used: 18.31.1 (https://cdn.jsdelivr.net/npm/bpmn-js@18.31.1/dist/)
-//   web/bpmn holds dist/bpmn-viewer.production.min.js, dist/assets/{bpmn-js,diagram-js}.css and LICENSE,
+//   web/bpmn holds dist/bpmn-navigated-viewer.production.min.js, dist/assets/{bpmn-js,diagram-js}.css and LICENSE,
 //   unmodified. The bpmn-js license forbids removing or changing its bpmn.io watermark code.
 
 var (

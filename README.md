@@ -139,6 +139,9 @@ contains a BPMN diagram; no external calls are made. The XML must contain
 diagram interchange (`bpmndi`) layout information; XML without it is shown with
 a "no diagram to display" error.
 
+Diagrams are scaled down to fit the page width. Click a diagram to open it
+enlarged; there you can scroll or drag to pan and use Ctrl + scroll to zoom.
+
 > [!NOTE]
 >
 > _bpmn-js is used under the [bpmn.io license](https://bpmn.io/license/), which
