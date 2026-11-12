@@ -141,6 +141,8 @@ a "no diagram to display" error.
 
 Diagrams are scaled down to fit the page width. Click a diagram to open it
 enlarged; there you can scroll or drag to pan and use Ctrl + scroll to zoom.
+When printing, diagrams are scaled to the paper width, and diagrams taller than
+a page are split over several pages, between shapes where possible.
 
 > [!NOTE]
 >

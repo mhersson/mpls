@@ -173,6 +173,12 @@ pre.bpmn-source-rendered {
   display: none;
 }
 
+/* Print slices of a BPMN diagram (see preparePrint in ws.js). Each slice
+ * reserves a strip at its bottom for its copy of the bpmn.io watermark. */
+.bpmn-print {
+  display: none;
+}
+
 /* Enlarged BPMN diagram. Light for the same watermark reason as the card. */
 #bpmnContent {
   display: none;
@@ -310,6 +316,37 @@ a:hover {
 }
 
 @media print {
+  /* Collapsed rather than display: none, so the arrowhead markers that the
+   * print slices reference stay available. */
+  .bpmn-diagram.bpmn-printing {
+    height: 0 !important;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+  }
+
+  .bpmn-print {
+    display: block;
+    margin: 1em 0;
+  }
+
+  .bpmn-print-slice {
+    position: relative;
+    box-sizing: border-box;
+    margin: 0 auto;
+    padding-bottom: 48px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .bpmn-print-slice > svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
   body > div:first-child,    /* header <details> wrapper from index.html */
   #contentModal,
   .preview-padding,

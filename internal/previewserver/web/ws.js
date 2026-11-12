@@ -342,6 +342,118 @@
 
       this.evict();
     },
+
+    // ------------------------------------------------------------------------
+    // Printing
+    //
+    // A browser never splits an <svg> across pages: a live viewer taller than
+    // a page is cut off at the page bottom, and its drawing is fitted to the
+    // screen width, not to the paper. For printing, each diagram is therefore
+    // laid out as page-sized slices: copies of the drawing in diagram units,
+    // scaled by the browser to the paper width. Every slice carries its own
+    // copy of the bpmn.io watermark, unchanged, in a reserved strip below the
+    // drawing, so each printed part of a diagram shows the watermark. The live
+    // viewer stays in the page (collapsed while printing) and the slices are
+    // removed after printing.
+    // ------------------------------------------------------------------------
+
+    // Roughly the content width of A4 and Letter paper at default margins, in
+    // CSS px. Narrower paper only makes the slices smaller.
+    PRINT_WIDTH: 720,
+    // Printed height of one slice including the watermark strip; fits A4 and
+    // Letter pages at default margins.
+    PRINT_SLICE_HEIGHT: 860,
+
+    preparePrint() {
+      this.cleanupPrint();
+
+      $$(".bpmn-diagram").forEach((card) => {
+        const viewer = card._mplsViewer;
+        if (!viewer || viewer._mplsInModal || !card.isConnected) return;
+
+        const svg = card.querySelector(".djs-container > svg");
+        const watermark = card.querySelector(".bjs-powered-by");
+        // Never print a diagram without its watermark: leave it as it is.
+        if (!svg || !watermark) return;
+
+        const inner = viewer.get("canvas").viewbox().inner;
+        if (!inner.width || !inner.height) return;
+
+        const pad = this.PADDING;
+        const x = inner.x - pad;
+        const width = inner.width + 2 * pad;
+        const top = inner.y - pad;
+        const bottom = inner.y + inner.height + pad;
+        const scale = Math.min(1, this.PRINT_WIDTH / width);
+        const band = (this.PRINT_SLICE_HEIGHT - this.WATERMARK_SPACE) / scale;
+        const edges = [top, ...this.sliceBreaks(viewer, top, bottom, band), bottom];
+
+        const slices = document.createElement("div");
+        slices.className = "bpmn-print";
+
+        for (let i = 0; i < edges.length - 1; i++) {
+          const sliceTop = edges.at(i);
+          const sliceHeight = edges.at(i + 1) - sliceTop;
+          const copy = svg.cloneNode(true);
+          // Draw in diagram units; the viewBox selects this slice's band.
+          copy.querySelector(".viewport")?.removeAttribute("transform");
+          copy.removeAttribute("width");
+          copy.removeAttribute("height");
+          copy.removeAttribute("tabindex");
+          copy.setAttribute(
+            "viewBox",
+            `${x} ${sliceTop} ${width} ${sliceHeight}`,
+          );
+          copy.setAttribute("preserveAspectRatio", "xMidYMin meet");
+          copy.style.aspectRatio = `${width} / ${sliceHeight}`;
+
+          const slice = document.createElement("div");
+          slice.className = "bpmn-print-slice";
+          // Never print larger than the diagram's own size.
+          slice.style.maxWidth = Math.ceil(width) + "px";
+          slice.appendChild(copy);
+          slice.appendChild(watermark.cloneNode(true));
+          slices.appendChild(slice);
+        }
+
+        card.after(slices);
+        card.classList.add("bpmn-printing");
+      });
+    },
+
+    // Returns where print slices end, in diagram units. Each slice is filled
+    // up to `band`, but ends in a gap between shapes and labels when there is
+    // one in its lower half, so no shape is cut in two. Pools, lanes and other
+    // shapes taller than half a slice cannot avoid a cut and are ignored.
+    sliceBreaks(viewer, top, bottom, band) {
+      const spans = viewer
+        .get("elementRegistry")
+        .filter((e) => e.parent && !e.waypoints && e.height < band / 2)
+        .map((e) => [e.y, e.y + e.height]);
+
+      const breaks = [];
+      let start = top;
+      while (bottom - start > band) {
+        const limit = start + band;
+        let cut = limit;
+        for (let guard = 0; guard < spans.length; guard++) {
+          const hit = spans.find(([a, b]) => a < cut && cut < b);
+          if (!hit) break;
+          cut = hit[0] - 4;
+        }
+        if (cut <= start + band / 2) cut = limit;
+        breaks.push(cut);
+        start = cut;
+      }
+      return breaks;
+    },
+
+    cleanupPrint() {
+      $$(".bpmn-print").forEach((slices) => slices.remove());
+      $$(".bpmn-printing").forEach((card) =>
+        card.classList.remove("bpmn-printing"),
+      );
+    },
   };
 
   // Used by presentation.js to render diagrams on the current slide.
@@ -844,6 +956,7 @@
   const printing = {
     init() {
       window.addEventListener("beforeprint", () => this.onBeforePrint());
+      window.addEventListener("afterprint", () => bpmnRenderer.cleanupPrint());
     },
 
     onBeforePrint() {
@@ -852,6 +965,7 @@
 
       this.forceLoadImages();
       this.closeModalIfOpen();
+      bpmnRenderer.preparePrint();
     },
 
     forceLoadImages() {
