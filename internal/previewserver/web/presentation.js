@@ -239,6 +239,12 @@
                     }
                 }
             }
+
+            // Render BPMN diagrams with live viewers (see bpmnRenderer in
+            // ws.js); dead copies taken from the page snapshot are replaced.
+            if (window.mplsBpmn) {
+                window.mplsBpmn.render(slideContent);
+            }
         }
 
         updateCounter();

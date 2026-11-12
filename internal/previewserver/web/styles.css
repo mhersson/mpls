@@ -143,6 +143,65 @@ code.language-mermaid {
   background-color: var(--background-color);
 }
 
+/* BPMN diagrams rendered by bpmn-js (see bpmnRenderer in ws.js).
+ * The bpmn-js license requires its bpmn.io watermark (.bjs-powered-by) to stay
+ * unchanged, fully visible and not overlapped. The card is therefore always
+ * light, so the dark-grey watermark keeps its contrast on dark themes.
+ * Never add rules that hide, move, restyle or cover .bjs-powered-by. */
+.bpmn-diagram {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 120px;
+  margin: 1em 0;
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bpmn-diagram.bpmn-error {
+  min-height: 0;
+  padding: 8px;
+  color: red;
+  border-color: red;
+  background-color: var(--background-color);
+}
+
+pre.bpmn-source-rendered {
+  display: none;
+}
+
+/* Print slices of a BPMN diagram (see preparePrint in ws.js). Each slice
+ * reserves a strip at its bottom for its copy of the bpmn.io watermark. */
+.bpmn-print {
+  display: none;
+}
+
+/* Enlarged BPMN diagram. Light for the same watermark reason as the card. */
+#bpmnContent {
+  display: none;
+  position: relative;
+  width: 95vw;
+  /* Leaves room above it for the close button. */
+  height: calc(100vh - 140px);
+  background-color: #ffffff;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Top-left, clear of the watermark in the bottom-right corner. */
+#bpmnHint {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  z-index: 1;
+  font-size: 12px;
+  color: #666666;
+  pointer-events: none;
+}
+
 table,
 th,
 td {
@@ -257,6 +316,37 @@ a:hover {
 }
 
 @media print {
+  /* Collapsed rather than display: none, so the arrowhead markers that the
+   * print slices reference stay available. */
+  .bpmn-diagram.bpmn-printing {
+    height: 0 !important;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+  }
+
+  .bpmn-print {
+    display: block;
+    margin: 1em 0;
+  }
+
+  .bpmn-print-slice {
+    position: relative;
+    box-sizing: border-box;
+    margin: 0 auto;
+    padding-bottom: 48px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .bpmn-print-slice > svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
   body > div:first-child,    /* header <details> wrapper from index.html */
   #contentModal,
   .preview-padding,
@@ -268,7 +358,8 @@ a:hover {
   blockquote,
   table,
   figure,
-  .language-mermaid {
+  .language-mermaid,
+  .bpmn-diagram {
     page-break-inside: avoid;
   }
 
