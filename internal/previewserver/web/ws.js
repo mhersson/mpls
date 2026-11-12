@@ -100,6 +100,202 @@
   };
 
   // ==========================================================================
+  // BPMN Module
+  // ==========================================================================
+  //
+  // Renders ```bpmn fenced blocks with the bpmn-js Viewer, loaded on demand
+  // from /bpmn/ only when a page contains BPMN.
+  //
+  // LICENSE NOTE: bpmn-js may only be used if the bpmn.io watermark it draws
+  // (a.bjs-powered-by) is never removed or changed and stays fully visible and
+  // not overlapped (see web/bpmn/LICENSE). Therefore:
+  //   - the live Viewer, which owns the watermark, stays in the DOM; diagrams
+  //     are never exported to static SVG,
+  //   - the drawing is fitted above a reserved strip at the bottom of the card
+  //     so no shape is ever drawn under the watermark,
+  //   - the card has a light background so the watermark keeps its contrast
+  //     on dark themes (see .bpmn-diagram in styles.css).
+
+  const bpmnRenderer = {
+    loading: null,
+    // source -> Viewer[]; a viewer whose card left the DOM (content update,
+    // slide change) is attached to the new card instead of re-importing.
+    viewers: new Map(),
+    MAX_CACHED_VIEWERS: 20,
+    PADDING: 16,
+    // The watermark is 21px high and sits 15px above the bottom edge.
+    WATERMARK_SPACE: 48,
+
+    load() {
+      if (window.BpmnJS) return Promise.resolve();
+      if (!this.loading) {
+        for (const href of ["/bpmn/diagram-js.css", "/bpmn/bpmn-js.css"]) {
+          if (document.querySelector(`link[href="${href}"]`)) continue;
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = href;
+          document.head.appendChild(link);
+        }
+        this.loading = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "/bpmn/bpmn-viewer.production.min.js";
+          script.onload = resolve;
+          script.onerror = () => {
+            this.loading = null;
+            script.remove();
+            reject(new Error("Failed to load the BPMN renderer"));
+          };
+          document.head.appendChild(script);
+        });
+      }
+      return this.loading;
+    },
+
+    renderError(card, error) {
+      card.classList.add("bpmn-error");
+      card.style.height = "";
+      card.innerHTML = `<strong>BPMN Error:</strong><pre>${escapeHtml(error.message || String(error))}</pre>`;
+    },
+
+    // Takes a cached viewer for this source that is not shown anywhere else.
+    takeViewer(source) {
+      const pool = this.viewers.get(source) || [];
+      return pool.find((v) => !v._mplsCard || !v._mplsCard.isConnected);
+    },
+
+    cacheViewer(source, viewer) {
+      const pool = this.viewers.get(source) || [];
+      pool.push(viewer);
+      this.viewers.set(source, pool);
+    },
+
+    evict() {
+      let total = 0;
+      this.viewers.forEach((pool) => (total += pool.length));
+      for (const [source, pool] of this.viewers) {
+        if (total <= this.MAX_CACHED_VIEWERS) break;
+        for (const viewer of pool.slice()) {
+          if (total <= this.MAX_CACHED_VIEWERS) break;
+          if (viewer._mplsCard && viewer._mplsCard.isConnected) continue;
+          viewer.destroy();
+          pool.splice(pool.indexOf(viewer), 1);
+          total--;
+        }
+        if (pool.length === 0) this.viewers.delete(source);
+      }
+    },
+
+    // Sizes the card to the diagram and draws the diagram centred above the
+    // watermark strip, scaled down (never up) to fit the card width.
+    fit(card, viewer) {
+      const width = card.clientWidth;
+      if (!width) return;
+
+      const canvas = viewer.get("canvas");
+      canvas.resized();
+      const inner = canvas.viewbox().inner;
+      if (!inner.width || !inner.height) return;
+
+      const pad = this.PADDING;
+      const scale = Math.min(1, (width - 2 * pad) / inner.width);
+      const height = Math.ceil(inner.height * scale + pad + this.WATERMARK_SPACE);
+
+      card.style.height = height + "px";
+      canvas.resized();
+      canvas.viewbox({
+        x: inner.x - (width / scale - inner.width) / 2,
+        y: inner.y - pad / scale,
+        width: width / scale,
+        height: height / scale,
+      });
+    },
+
+    refit() {
+      $$(".bpmn-diagram").forEach((card) => {
+        if (card._mplsViewer) this.fit(card, card._mplsViewer);
+      });
+    },
+
+    async render(root = document) {
+      const blocks = Array.from(root.querySelectorAll("pre > code.language-bpmn"));
+      if (blocks.length === 0) return;
+
+      const pending = [];
+      for (const code of blocks) {
+        const pre = code.parentElement;
+        const next = pre.nextElementSibling;
+        if (next && next.classList.contains("bpmn-diagram")) {
+          // A card created by this script is live; anything else is a dead
+          // copy from an innerHTML snapshot (presentation mode) and is
+          // replaced by a live viewer.
+          if (next._mplsBpmn) continue;
+          next.remove();
+        }
+
+        const card = document.createElement("div");
+        card.className = "bpmn-diagram";
+        card._mplsBpmn = true;
+        card.setAttribute("data-rendering", "true");
+        pre.after(card);
+        pending.push({ pre, card, source: code.textContent || "" });
+      }
+      if (pending.length === 0) return;
+
+      try {
+        await this.load();
+      } catch (error) {
+        console.error("BPMN renderer failed to load:", error);
+        for (const { card } of pending) {
+          this.renderError(card, error);
+          card.removeAttribute("data-rendering");
+        }
+        return;
+      }
+
+      for (const { pre, card, source } of pending) {
+        if (!card.isConnected) continue;
+        let viewer = this.takeViewer(source);
+        try {
+          if (viewer) {
+            viewer._mplsCard = card;
+            viewer.attachTo(card);
+          } else {
+            viewer = new window.BpmnJS({ container: card });
+            viewer._mplsCard = card;
+            const { warnings } = await viewer.importXML(source);
+            if (warnings && warnings.length > 0) {
+              console.warn("BPMN import warnings:", warnings);
+            }
+            this.cacheViewer(source, viewer);
+          }
+          card._mplsViewer = viewer;
+          pre.classList.add("bpmn-source-rendered");
+          this.fit(card, viewer);
+        } catch (error) {
+          console.error("BPMN diagram failed:", error);
+          if (viewer) {
+            const pool = this.viewers.get(source);
+            if (pool && pool.includes(viewer)) {
+              pool.splice(pool.indexOf(viewer), 1);
+            }
+            viewer.destroy();
+          }
+          this.renderError(card, error);
+        } finally {
+          card.removeAttribute("data-rendering");
+        }
+      }
+
+      this.evict();
+    },
+  };
+
+  // Used by presentation.js to render diagrams on the current slide.
+  window.mplsBpmn = {
+    render: (root) => bpmnRenderer.render(root),
+  };
+
+  // ==========================================================================
   // Scroll Module
   // ==========================================================================
 
@@ -479,7 +675,7 @@
       }
 
       // Render and scroll
-      await renderMermaidAndScroll(titleChanged);
+      await renderDiagramsAndScroll(titleChanged);
     },
   };
 
@@ -549,9 +745,9 @@
   // Combined Operations
   // ==========================================================================
 
-  async function renderMermaidAndScroll(fileChanged = false) {
-    // First render mermaid
-    await mermaidRenderer.render();
+  async function renderDiagramsAndScroll(fileChanged = false) {
+    // First render diagrams
+    await Promise.all([mermaidRenderer.render(), bpmnRenderer.render()]);
 
     // Add anchor links to headings
     headingAnchors.attach();
@@ -579,8 +775,8 @@
 
     window.addEventListener("load", async () => {
       setupLazyLoading();
-      // Render mermaid diagrams that are already in the HTML from HTTP GET
-      await renderMermaidAndScroll();
+      // Render diagrams that are already in the HTML from HTTP GET
+      await renderDiagramsAndScroll();
     });
 
     window.addEventListener("beforeunload", () => {
@@ -588,6 +784,10 @@
     });
 
     window.addEventListener("resize", scroll.handleResize);
+    window.addEventListener(
+      "resize",
+      debounce(() => bpmnRenderer.refit(), CONFIG.RESIZE_DEBOUNCE_DELAY),
+    );
   }
 
   document.addEventListener("DOMContentLoaded", init);

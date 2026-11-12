@@ -678,3 +678,17 @@ func BenchmarkHTML_ContentDiff_LargeDoc(b *testing.B) {
 		HTML(markdown2, uri, 0)
 	}
 }
+
+// ws.js renders BPMN from <pre><code class="language-bpmn"> and reads the raw
+// XML back from textContent, so the block must survive unhighlighted.
+func TestHTML_BpmnCodeBlock(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache
+	resetExtensionsCache()
+
+	markdown := "```bpmn\n<bpmn:definitions id=\"d\"></bpmn:definitions>\n```"
+	uri := "file:///test/doc.md"
+
+	html, _ := HTML(markdown, uri, 0)
+
+	assert.Contains(t, html, `<pre><code class="language-bpmn">`)
+	assert.Contains(t, html, "&lt;bpmn:definitions id=&quot;d&quot;&gt;&lt;/bpmn:definitions&gt;")
+}

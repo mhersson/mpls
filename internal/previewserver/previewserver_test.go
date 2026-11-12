@@ -276,6 +276,9 @@ func TestIsStaticAsset(t *testing.T) {
 		// Theme paths
 		{name: "theme file", path: "/themes/dark.css", expected: true},
 		{name: "themes root", path: "/themes/", expected: true},
+		// bpmn-js paths
+		{name: "bpmn viewer", path: "/bpmn/bpmn-viewer.production.min.js", expected: true},
+		{name: "bpmn css", path: "/bpmn/bpmn-js.css", expected: true},
 		// Non-static paths
 		{name: "root path", path: "/", expected: false},
 		{name: "markdown file", path: "/docs/readme.md", expected: false},
@@ -396,4 +399,21 @@ func TestConvertMetaToHTMLTable_SortedKeys(t *testing.T) {
 	assert.Less(t, cardinalIdx, middleIdx, "cardinal should come before middle")
 	assert.Less(t, middleIdx, yakIdx, "middle should come before yak")
 	assert.Less(t, yakIdx, zebraIdx, "yak should come before zebra")
+}
+
+// TestBpmnWatermarkPresent guards the bpmn-js license: the vendored viewer
+// must keep the code that draws the bpmn.io watermark, and the license must
+// ship with it. Replacing the bundle with a build that strips the watermark
+// is not allowed.
+func TestBpmnWatermarkPresent(t *testing.T) {
+	t.Parallel()
+
+	viewer, err := bpmnFS.ReadFile("web/bpmn/bpmn-viewer.production.min.js")
+	assert.NoError(t, err)
+	assert.Contains(t, string(viewer), `class="bjs-powered-by"`)
+	assert.Contains(t, string(viewer), `href="http://bpmn.io"`)
+
+	license, err := bpmnFS.ReadFile("web/bpmn/LICENSE")
+	assert.NoError(t, err)
+	assert.Contains(t, string(license), "MUST NOT be")
 }

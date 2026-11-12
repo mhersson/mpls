@@ -27,6 +27,9 @@ import (
 
 // Current version of katex used: 0.18.1 (https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css)
 // Current version of mermaid used: 11.12.1 (https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.min.js)
+// Current version of bpmn-js used: 18.31.1 (https://cdn.jsdelivr.net/npm/bpmn-js@18.31.1/dist/)
+//   web/bpmn holds dist/bpmn-viewer.production.min.js, dist/assets/{bpmn-js,diagram-js}.css and LICENSE,
+//   unmodified. The bpmn-js license forbids removing or changing its bpmn.io watermark code.
 
 var (
 	Browser              string
@@ -59,6 +62,8 @@ var (
 	katexFontsFS embed.FS
 	//go:embed web/themes
 	themesFS embed.FS
+	//go:embed web/bpmn
+	bpmnFS embed.FS
 
 	clients         []*websocket.Conn
 	clientsMutex    sync.Mutex
@@ -249,8 +254,9 @@ func isStaticAsset(path string) bool {
 		return true
 	}
 
-	// Check for /fonts/ and /themes/ prefixes
-	return strings.HasPrefix(path, "/fonts/") || strings.HasPrefix(path, "/themes/")
+	// Check for /fonts/, /themes/ and /bpmn/ prefixes
+	return strings.HasPrefix(path, "/fonts/") || strings.HasPrefix(path, "/themes/") ||
+		strings.HasPrefix(path, "/bpmn/")
 }
 
 func isValidMarkdownExt(ext string) bool {
@@ -371,6 +377,10 @@ func (s *Server) Start() {
 	// Serve embedded themes
 	themesSubFS, _ := fs.Sub(themesFS, "web/themes")
 	http.Handle("/themes/", http.StripPrefix("/themes/", http.FileServer(http.FS(themesSubFS))))
+
+	// Serve embedded bpmn-js (loaded on demand by ws.js)
+	bpmnSubFS, _ := fs.Sub(bpmnFS, "web/bpmn")
+	http.Handle("/bpmn/", http.StripPrefix("/bpmn/", http.FileServer(http.FS(bpmnSubFS))))
 
 	http.HandleFunc("/ws", handleWebSocket)
 
