@@ -316,13 +316,8 @@ a:hover {
 }
 
 @media print {
-  /* Collapsed rather than display: none, so the arrowhead markers that the
-   * print slices reference stay available. */
   .bpmn-diagram.bpmn-printing {
-    height: 0 !important;
-    min-height: 0;
-    margin: 0;
-    border: 0;
+    display: none;
   }
 
   .bpmn-print {

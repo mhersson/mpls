@@ -270,12 +270,17 @@
       }
     },
 
-    async render(root = document) {
-      const blocks = Array.from(root.querySelectorAll("pre > code.language-bpmn"));
-      if (blocks.length === 0) return;
+    async render(root = $("content")) {
+      try {
+        await this.renderBlocks(root);
+      } finally {
+        this.evict();
+      }
+    },
 
+    async renderBlocks(root) {
       const pending = [];
-      for (const code of blocks) {
+      for (const code of root.querySelectorAll("pre > code.language-bpmn")) {
         const pre = code.parentElement;
         const next = pre.nextElementSibling;
         if (next && next.classList.contains("bpmn-diagram")) {
@@ -320,11 +325,17 @@
             if (warnings && warnings.length > 0) {
               console.warn("BPMN import warnings:", warnings);
             }
+            if (!card.isConnected) {
+              viewer.destroy();
+              continue;
+            }
+            viewer._mplsPrintLayout = this.printLayout(card, viewer);
             this.cacheViewer(source, viewer);
           }
           card._mplsViewer = viewer;
           pre.classList.add("bpmn-source-rendered");
           this.fit(card, viewer);
+          modal.attachBpmnHandler(card);
         } catch (error) {
           console.error("BPMN diagram failed:", error);
           if (viewer) {
@@ -339,8 +350,6 @@
           card.removeAttribute("data-rendering");
         }
       }
-
-      this.evict();
     },
 
     // ------------------------------------------------------------------------
@@ -353,7 +362,7 @@
     // scaled by the browser to the paper width. Every slice carries its own
     // copy of the bpmn.io watermark, unchanged, in a reserved strip below the
     // drawing, so each printed part of a diagram shows the watermark. The live
-    // viewer stays in the page (collapsed while printing) and the slices are
+    // viewer stays in the page (hidden while printing) and the slices are
     // removed after printing.
     // ------------------------------------------------------------------------
 
@@ -364,61 +373,111 @@
     // Letter pages at default margins.
     PRINT_SLICE_HEIGHT: 860,
 
+    // Measure once after import, while the viewer is laid out on screen.
+    // The SVG and watermark belong to the viewer, even while it is in a modal.
+    printLayout(card, viewer) {
+      const svg = card.querySelector(".djs-container > svg");
+      const watermark = card.querySelector(".bjs-powered-by");
+      // Never print a diagram without its watermark: leave it as it is.
+      if (!svg || !watermark) return;
+
+      const inner = viewer.get("canvas").viewbox().inner;
+      if (!inner.width || !inner.height) return;
+
+      const pad = this.PADDING;
+      const x = inner.x - pad;
+      const width = inner.width + 2 * pad;
+      const top = inner.y - pad;
+      const bottom = inner.y + inner.height + pad;
+      const scale = Math.min(1, this.PRINT_WIDTH / width);
+      const band = (this.PRINT_SLICE_HEIGHT - this.WATERMARK_SPACE) / scale;
+      const edges = [top, ...this.sliceBreaks(viewer, top, bottom, band), bottom];
+      return { svg, watermark, x, width, edges };
+    },
+
+    printSliceId: 0,
+
+    // Each slice must resolve its own markers, including when the original
+    // SVG is hidden or the same diagram appears twice on a printed page.
+    clonePrintSvg(svg) {
+      const copy = svg.cloneNode(true);
+      const prefix = `mpls-print-${++this.printSliceId}-`;
+      for (const element of copy.querySelectorAll("[id]")) {
+        element.id = prefix + element.id;
+      }
+      for (const element of copy.querySelectorAll("*")) {
+        for (const attr of element.attributes) {
+          if (attr.value.includes("url(")) {
+            attr.value = attr.value.replace(/url\((["']?)#/g, `url($1#${prefix}`);
+          } else if (attr.localName === "href" && attr.value.startsWith("#")) {
+            attr.value = "#" + prefix + attr.value.slice(1);
+          }
+        }
+      }
+      return copy;
+    },
+
+    printSlices({ svg, watermark, x, width, edges }) {
+      const slices = document.createElement("div");
+      slices.className = "bpmn-print";
+
+      for (let i = 0; i < edges.length - 1; i++) {
+        const sliceTop = edges.at(i);
+        const sliceHeight = edges.at(i + 1) - sliceTop;
+        const copy = this.clonePrintSvg(svg);
+        // Draw in diagram units; the viewBox selects this slice's band.
+        copy.querySelector(".viewport")?.removeAttribute("transform");
+        copy.removeAttribute("width");
+        copy.removeAttribute("height");
+        copy.removeAttribute("tabindex");
+        copy.setAttribute(
+          "viewBox",
+          `${x} ${sliceTop} ${width} ${sliceHeight}`,
+        );
+        copy.setAttribute("preserveAspectRatio", "xMidYMin meet");
+        copy.style.aspectRatio = `${width} / ${sliceHeight}`;
+
+        const slice = document.createElement("div");
+        slice.className = "bpmn-print-slice";
+        // Never print larger than the diagram's own size.
+        slice.style.maxWidth = Math.ceil(width) + "px";
+        slice.appendChild(copy);
+        slice.appendChild(watermark.cloneNode(true));
+        slices.appendChild(slice);
+      }
+      return slices;
+    },
+
     preparePrint() {
       this.cleanupPrint();
-
-      $$(".bpmn-diagram").forEach((card) => {
-        const viewer = card._mplsViewer;
-        if (!viewer || viewer._mplsInModal || !card.isConnected) return;
-
-        const svg = card.querySelector(".djs-container > svg");
-        const watermark = card.querySelector(".bjs-powered-by");
-        // Never print a diagram without its watermark: leave it as it is.
-        if (!svg || !watermark) return;
-
-        const inner = viewer.get("canvas").viewbox().inner;
-        if (!inner.width || !inner.height) return;
-
-        const pad = this.PADDING;
-        const x = inner.x - pad;
-        const width = inner.width + 2 * pad;
-        const top = inner.y - pad;
-        const bottom = inner.y + inner.height + pad;
-        const scale = Math.min(1, this.PRINT_WIDTH / width);
-        const band = (this.PRINT_SLICE_HEIGHT - this.WATERMARK_SPACE) / scale;
-        const edges = [top, ...this.sliceBreaks(viewer, top, bottom, band), bottom];
-
-        const slices = document.createElement("div");
-        slices.className = "bpmn-print";
-
-        for (let i = 0; i < edges.length - 1; i++) {
-          const sliceTop = edges.at(i);
-          const sliceHeight = edges.at(i + 1) - sliceTop;
-          const copy = svg.cloneNode(true);
-          // Draw in diagram units; the viewBox selects this slice's band.
-          copy.querySelector(".viewport")?.removeAttribute("transform");
-          copy.removeAttribute("width");
-          copy.removeAttribute("height");
-          copy.removeAttribute("tabindex");
-          copy.setAttribute(
-            "viewBox",
-            `${x} ${sliceTop} ${width} ${sliceHeight}`,
-          );
-          copy.setAttribute("preserveAspectRatio", "xMidYMin meet");
-          copy.style.aspectRatio = `${width} / ${sliceHeight}`;
-
-          const slice = document.createElement("div");
-          slice.className = "bpmn-print-slice";
-          // Never print larger than the diagram's own size.
-          slice.style.maxWidth = Math.ceil(width) + "px";
-          slice.appendChild(copy);
-          slice.appendChild(watermark.cloneNode(true));
-          slices.appendChild(slice);
-        }
-
-        card.after(slices);
+      for (const card of $$("#content .bpmn-diagram")) {
+        const layout = card._mplsViewer?._mplsPrintLayout;
+        if (!layout) continue;
+        card.after(this.printSlices(layout));
         card.classList.add("bpmn-printing");
-      });
+      }
+    },
+
+    prepareSlidePrint(pages) {
+      // Only current document sources can supply a slide. The lookup lives
+      // for this print job, so edits cannot leave obsolete diagrams in it.
+      const layouts = new Map();
+      for (const code of $$("#content pre > code.language-bpmn")) {
+        const layout = code.parentElement.nextElementSibling?._mplsViewer?._mplsPrintLayout;
+        if (layout) layouts.set(code.textContent, layout);
+      }
+      for (const code of pages.querySelectorAll("pre > code.language-bpmn")) {
+        const pre = code.parentElement;
+        const card = pre.nextElementSibling;
+        if (card?.classList.contains("bpmn-diagram")) card.remove();
+        const layout = layouts.get(code.textContent);
+        if (layout) {
+          pre.replaceWith(this.printSlices(layout));
+        } else {
+          pre.classList.remove("bpmn-source-rendered");
+          pre.before("BPMN diagram unavailable for printing.");
+        }
+      }
     },
 
     // Returns where print slices end, in diagram units. Each slice is filled
@@ -456,9 +515,11 @@
     },
   };
 
-  // Used by presentation.js to render diagrams on the current slide.
+  // Diagram operations used by the presentation lifecycle.
   window.mplsBpmn = {
     render: (root) => bpmnRenderer.render(root),
+    prepareSlidePrint: (pages) => bpmnRenderer.prepareSlidePrint(pages),
+    evict: () => bpmnRenderer.evict(),
   };
 
   // ==========================================================================
@@ -572,6 +633,7 @@
           event.key === "Escape" &&
           this.elements.modal.style.display === "flex"
         ) {
+          event.preventDefault();
           this.hide();
         }
       });
@@ -634,6 +696,7 @@
         bpmnRenderer.fit(card, viewer);
       } else {
         viewer.detach();
+        bpmnRenderer.evict();
       }
       this.elements.bpmnContent.style.display = "none";
     },
@@ -667,36 +730,32 @@
           div.style.cursor = "pointer";
         }
       });
+    },
 
-      // Setup BPMN modals. A click on the bpmn.io watermark keeps its own
-      // behaviour (the bpmn.io notice) and does not open the modal.
-      $$(".bpmn-diagram").forEach((card) => {
-        if (!card._mplsViewer || card._modalHandlerAttached) return;
-        // A drag across the card that ends in a click is not a click.
-        // Capture phase: diagram-js stops mousedown propagation on shapes.
-        let down = null;
-        card.addEventListener(
-          "mousedown",
-          (event) => {
-            down = { x: event.clientX, y: event.clientY };
-          },
-          true,
-        );
-        card._modalHandler = (event) => {
-          if (event.target.closest(".bjs-powered-by")) return;
-          if (
-            down &&
-            Math.hypot(event.clientX - down.x, event.clientY - down.y) > 5
-          ) {
-            return;
-          }
-          this.show("bpmn", card);
-        };
-        card.addEventListener("click", card._modalHandler);
-        card._modalHandlerAttached = true;
-        card.style.cursor = "zoom-in";
-        card.title = "Click to enlarge";
+    // Installed once when the card acquires its viewer, in either preview.
+    attachBpmnHandler(card) {
+      // A drag across the card that ends in a click is not a click.
+      // Capture phase: diagram-js stops mousedown propagation on shapes.
+      let down = null;
+      card.addEventListener(
+        "mousedown",
+        (event) => {
+          down = { x: event.clientX, y: event.clientY };
+        },
+        true,
+      );
+      card.addEventListener("click", (event) => {
+        if (event.target.closest(".bjs-powered-by")) return;
+        if (
+          down &&
+          Math.hypot(event.clientX - down.x, event.clientY - down.y) > 5
+        ) {
+          return;
+        }
+        this.show("bpmn", card);
       });
+      card.style.cursor = "zoom-in";
+      card.title = "Click to enlarge";
     },
   };
 

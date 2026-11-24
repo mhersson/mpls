@@ -3,7 +3,8 @@
 #presentation-container {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    /* Below the content modal (1000) and bpmn.io notice (1001). */
+    z-index: 999;
     background: var(--background-color);
     color: var(--text-color);
     display: none;
@@ -207,15 +208,15 @@
         display: none !important;
     }
 
-    #presentation-container {
+    #presentation-container.active {
         position: static;
         display: block !important;
         background: var(--background-color, white);
         color: var(--text-color, black);
     }
 
-    #presentation-container.active {
-        display: block;
+    .slide-page .bpmn-print {
+        width: 100%;
     }
 
     #print-container {
