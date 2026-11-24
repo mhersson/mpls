@@ -95,9 +95,7 @@ func TestGetDocDir(t *testing.T) {
 	}
 }
 
-func TestCleanupDocumentContent(t *testing.T) {
-	t.Parallel()
-
+func TestCleanupDocumentContent(t *testing.T) { //nolint:paralleltest // Modifies the shared document content cache
 	// Initialize the map
 	if oldDocContentByURI == nil {
 		oldDocContentByURI = make(map[string]map[string]string)
@@ -119,16 +117,14 @@ func TestCleanupDocumentContent(t *testing.T) {
 	assert.False(t, exists, "CleanupDocumentContent did not remove URI from map")
 }
 
-func TestCleanupDocumentContent_NilMap(t *testing.T) {
-	t.Parallel()
-
+func TestCleanupDocumentContent_NilMap(t *testing.T) { //nolint:paralleltest // Replaces the shared document content cache
 	// Save original and restore after test
 	original := oldDocContentByURI
 	oldDocContentByURI = nil
 
-	defer func() {
+	t.Cleanup(func() {
 		oldDocContentByURI = original
-	}()
+	})
 
 	// Should not panic when map is nil
 	CleanupDocumentContent("file:///nonexistent.md")
