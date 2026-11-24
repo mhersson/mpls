@@ -27,6 +27,9 @@ import (
 
 // Current version of katex used: 0.18.1 (https://cdn.jsdelivr.net/npm/katex@0.18.1/dist/katex.min.css)
 // Current version of mermaid used: 11.12.1 (https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.min.js)
+// Current version of bpmn-js used: 18.31.1 (https://cdn.jsdelivr.net/npm/bpmn-js@18.31.1/dist/)
+//   web/bpmn holds dist/bpmn-navigated-viewer.production.min.js, dist/assets/{bpmn-js,diagram-js}.css and LICENSE,
+//   unmodified. The bpmn-js license forbids removing or changing its bpmn.io watermark code.
 
 var (
 	Browser              string
@@ -59,6 +62,15 @@ var (
 	katexFontsFS embed.FS
 	//go:embed web/themes
 	themesFS embed.FS
+	//go:embed web/bpmn
+	bpmnFS embed.FS
+
+	bpmnAssetPaths = []string{
+		"/bpmn/LICENSE",
+		"/bpmn/bpmn-js.css",
+		"/bpmn/diagram-js.css",
+		"/bpmn/bpmn-navigated-viewer.production.min.js",
+	}
 
 	clients         []*websocket.Conn
 	clientsMutex    sync.Mutex
@@ -245,11 +257,10 @@ func isStaticAsset(path string) bool {
 		"/presentation.css",
 	}
 
-	if slices.Contains(staticPaths, path) {
+	if slices.Contains(staticPaths, path) || slices.Contains(bpmnAssetPaths, path) {
 		return true
 	}
 
-	// Check for /fonts/ and /themes/ prefixes
 	return strings.HasPrefix(path, "/fonts/") || strings.HasPrefix(path, "/themes/")
 }
 
@@ -355,27 +366,35 @@ func (s *Server) serveMarkdownFile(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(fullHTML)) //nolint:gosec
 }
 
-func (s *Server) Start() {
+func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Static asset routes
-	http.HandleFunc("/styles.css", handleResponse("text/css", stylesCSS))
-	http.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
-	http.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
-	http.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
-	http.HandleFunc("/presentation.js", handleResponse("application/javascript", presentationJS))
-	http.HandleFunc("/presentation.css", handleResponse("text/css", presentationCSS))
+	mux.HandleFunc("/styles.css", handleResponse("text/css", stylesCSS))
+	mux.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
+	mux.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
+	mux.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
+	mux.HandleFunc("/presentation.js", handleResponse("application/javascript", presentationJS))
+	mux.HandleFunc("/presentation.css", handleResponse("text/css", presentationCSS))
 
 	// Serve embedded KaTeX fonts
 	fontsSubFS, _ := fs.Sub(katexFontsFS, "web/fonts")
-	http.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.FS(fontsSubFS))))
+	mux.Handle("/fonts/", http.StripPrefix("/fonts/", http.FileServer(http.FS(fontsSubFS))))
 
 	// Serve embedded themes
 	themesSubFS, _ := fs.Sub(themesFS, "web/themes")
-	http.Handle("/themes/", http.StripPrefix("/themes/", http.FileServer(http.FS(themesSubFS))))
+	mux.Handle("/themes/", http.StripPrefix("/themes/", http.FileServer(http.FS(themesSubFS))))
 
-	http.HandleFunc("/ws", handleWebSocket)
+	// Serve embedded bpmn-js (loaded on demand by ws.js)
+	bpmnSubFS, _ := fs.Sub(bpmnFS, "web/bpmn")
+	bpmnAssets := http.StripPrefix("/bpmn/", http.FileServer(http.FS(bpmnSubFS)))
+
+	for _, path := range bpmnAssetPaths {
+		mux.Handle(path, bpmnAssets)
+	}
+
+	mux.HandleFunc("/ws", handleWebSocket)
 
 	// Dynamic route handler for markdown files and root path
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 
 		// Root path - serve initial content
@@ -397,7 +416,10 @@ func (s *Server) Start() {
 		// Treat as markdown file request
 		s.serveMarkdownFile(w, r)
 	})
+}
 
+func (s *Server) Start() {
+	s.registerRoutes(http.DefaultServeMux)
 	signal.Notify(stopChan, os.Interrupt)
 
 	go func() {

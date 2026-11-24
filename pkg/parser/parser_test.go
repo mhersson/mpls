@@ -95,9 +95,7 @@ func TestGetDocDir(t *testing.T) {
 	}
 }
 
-func TestCleanupDocumentContent(t *testing.T) {
-	t.Parallel()
-
+func TestCleanupDocumentContent(t *testing.T) { //nolint:paralleltest // Modifies the shared document content cache
 	// Initialize the map
 	if oldDocContentByURI == nil {
 		oldDocContentByURI = make(map[string]map[string]string)
@@ -119,16 +117,14 @@ func TestCleanupDocumentContent(t *testing.T) {
 	assert.False(t, exists, "CleanupDocumentContent did not remove URI from map")
 }
 
-func TestCleanupDocumentContent_NilMap(t *testing.T) {
-	t.Parallel()
-
+func TestCleanupDocumentContent_NilMap(t *testing.T) { //nolint:paralleltest // Replaces the shared document content cache
 	// Save original and restore after test
 	original := oldDocContentByURI
 	oldDocContentByURI = nil
 
-	defer func() {
+	t.Cleanup(func() {
 		oldDocContentByURI = original
-	}()
+	})
 
 	// Should not panic when map is nil
 	CleanupDocumentContent("file:///nonexistent.md")
@@ -677,4 +673,18 @@ func BenchmarkHTML_ContentDiff_LargeDoc(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		HTML(markdown2, uri, 0)
 	}
+}
+
+// ws.js renders BPMN from <pre><code class="language-bpmn"> and reads the raw
+// XML back from textContent, so the block must survive unhighlighted.
+func TestHTML_BpmnCodeBlock(t *testing.T) { //nolint:paralleltest // Modifies global extensions cache
+	resetExtensionsCache()
+
+	markdown := "```bpmn\n<bpmn:definitions id=\"d\"></bpmn:definitions>\n```"
+	uri := "file:///test/doc.md"
+
+	html, _ := HTML(markdown, uri, 0)
+
+	assert.Contains(t, html, `<pre><code class="language-bpmn">`)
+	assert.Contains(t, html, "&lt;bpmn:definitions id=&quot;d&quot;&gt;&lt;/bpmn:definitions&gt;")
 }

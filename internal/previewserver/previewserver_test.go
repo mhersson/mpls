@@ -1,10 +1,16 @@
 package previewserver
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetChromaStyleForTheme(t *testing.T) {
@@ -276,6 +282,10 @@ func TestIsStaticAsset(t *testing.T) {
 		// Theme paths
 		{name: "theme file", path: "/themes/dark.css", expected: true},
 		{name: "themes root", path: "/themes/", expected: true},
+		// bpmn-js paths
+		{name: "bpmn viewer", path: "/bpmn/bpmn-navigated-viewer.production.min.js", expected: true},
+		{name: "bpmn css", path: "/bpmn/bpmn-js.css", expected: true},
+		{name: "markdown in bpmn folder", path: "/bpmn/plain.md", expected: false},
 		// Non-static paths
 		{name: "root path", path: "/", expected: false},
 		{name: "markdown file", path: "/docs/readme.md", expected: false},
@@ -290,6 +300,52 @@ func TestIsStaticAsset(t *testing.T) {
 
 			result := isStaticAsset(tt.path)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestBPMNRoutes(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	folder := filepath.Join(root, "bpmn")
+	require.NoError(t, os.Mkdir(folder, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(folder, "plain.md"), []byte("# Nested preview"), 0o600))
+
+	preview := &Server{WorkspaceRoot: root, InitialContent: indexHTML}
+	mux := http.NewServeMux()
+	preview.registerRoutes(mux)
+
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	for _, tc := range []struct {
+		path, mime, content string
+		status              int
+	}{
+		{"plain.md", "text/html", `<h1 id="nested-preview">`, http.StatusOK},
+		{"missing.md", "text/plain", "File not found", http.StatusNotFound},
+		{"LICENSE", "text/plain", "Camunda", http.StatusOK},
+		{"diagram-js.css", "text/css", ".djs-container", http.StatusOK},
+		{"bpmn-js.css", "text/css", ".bjs-", http.StatusOK},
+		{"bpmn-navigated-viewer.production.min.js", "javascript", "bjs-powered-by", http.StatusOK},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
+
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, server.URL+"/bpmn/"+tc.path, nil)
+			require.NoError(t, err)
+
+			resp, err := server.Client().Do(req)
+			require.NoError(t, err)
+			t.Cleanup(func() { assert.NoError(t, resp.Body.Close()) })
+
+			assert.Equal(t, tc.status, resp.StatusCode)
+			assert.Contains(t, resp.Header.Get("Content-Type"), tc.mime)
+
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.Contains(t, string(body), tc.content)
 		})
 	}
 }
@@ -396,4 +452,21 @@ func TestConvertMetaToHTMLTable_SortedKeys(t *testing.T) {
 	assert.Less(t, cardinalIdx, middleIdx, "cardinal should come before middle")
 	assert.Less(t, middleIdx, yakIdx, "middle should come before yak")
 	assert.Less(t, yakIdx, zebraIdx, "yak should come before zebra")
+}
+
+// TestBpmnWatermarkPresent guards the bpmn-js license: the vendored viewer
+// must keep the code that draws the bpmn.io watermark, and the license must
+// ship with it. Replacing the bundle with a build that strips the watermark
+// is not allowed.
+func TestBpmnWatermarkPresent(t *testing.T) {
+	t.Parallel()
+
+	viewer, err := bpmnFS.ReadFile("web/bpmn/bpmn-navigated-viewer.production.min.js")
+	require.NoError(t, err)
+	assert.Contains(t, string(viewer), `class="bjs-powered-by"`)
+	assert.Contains(t, string(viewer), `href="http://bpmn.io"`)
+
+	license, err := bpmnFS.ReadFile("web/bpmn/LICENSE")
+	require.NoError(t, err)
+	assert.Contains(t, string(license), "MUST NOT be")
 }

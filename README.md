@@ -119,6 +119,38 @@ and only if the UML code has changed.
 > security, you can host a PlantUML server locally and specify the
 > `--plantuml-server` flag to ensure that no external calls are made._
 
+### BPMN
+
+`mpls` renders [BPMN 2.0](https://www.omg.org/spec/BPMN/) diagrams with
+[bpmn-js](https://bpmn.io/toolkit/bpmn-js/). Put the XML of a diagram, as
+exported by e.g. the Camunda Modeler, in a fenced code block tagged `bpmn`:
+
+````markdown
+```bpmn
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions ...>
+  ...
+</bpmn:definitions>
+```
+````
+
+The renderer is embedded in `mpls` and only loaded by the preview when a page
+contains a BPMN diagram; no external calls are made. The XML must contain
+diagram interchange (`bpmndi`) layout information; XML without it is shown with
+a "no diagram to display" error.
+
+Diagrams are scaled down to fit the page width. Click a diagram to open it
+enlarged; there you can scroll or drag to pan and use Ctrl + scroll to zoom.
+When printing, diagrams are scaled to the paper width, and diagrams taller than
+a page are split over several pages, between shapes where possible.
+
+> [!NOTE]
+>
+> _bpmn-js is used under the [bpmn.io license](https://bpmn.io/license/), which
+> requires the bpmn.io watermark in the corner of every rendered diagram to
+> remain unchanged and fully visible. Diagrams are therefore always shown on a
+> light background, also with dark themes._
+
 ## Install
 
 > [!TIP]

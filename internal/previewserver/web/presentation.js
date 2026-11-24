@@ -239,6 +239,12 @@
                     }
                 }
             }
+
+            // Render BPMN diagrams with live viewers (see bpmnRenderer in
+            // ws.js); dead copies taken from the page snapshot are replaced.
+            if (window.mplsBpmn) {
+                window.mplsBpmn.render(slideContent);
+            }
         }
 
         updateCounter();
@@ -394,6 +400,8 @@
         if (!state.active) return;
 
         state.active = false;
+        slideContent.replaceChildren();
+        window.mplsBpmn?.evict();
 
         if (container) {
             container.classList.remove("active");
@@ -470,8 +478,10 @@
      * Handle keyboard events
      */
     function handleKeydown(event) {
-        // Ignore if in input field
+        // Leave shortcuts to the open modal or focused input.
         if (
+            event.defaultPrevented ||
+            document.getElementById("contentModal")?.style.display === "flex" ||
             event.target.tagName === "INPUT" ||
             event.target.tagName === "TEXTAREA" ||
             event.target.isContentEditable
@@ -591,7 +601,7 @@
      * Render all slides for printing
      */
     function renderForPrint() {
-        if (!state.active || state.slides.length === 0) {
+        if (!state.active || state.slides.length === 0 || printContainer) {
             return;
         }
 
@@ -606,6 +616,7 @@
             printContainer.appendChild(page);
         });
 
+        window.mplsBpmn?.prepareSlidePrint(printContainer);
         container.appendChild(printContainer);
 
         // Hide the interactive slide content during print
