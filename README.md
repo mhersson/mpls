@@ -311,6 +311,13 @@ The following options can be used when starting `mpls`:
 5. See the [theme gallery](screenshots/themes/README.md) for screenshots of all
    available themes, or use `--list-themes` to list them. Default is `light`.
 
+The preview server listens on the loopback interface (`127.0.0.1`) alone, so
+the preview is reachable only from the machine `mpls` runs on, at
+`http://localhost:<port>`, with the port given by `--port` or, by default, a
+random one. Other machines on the network cannot open it. Its WebSocket accepts
+connections only from the preview's own pages, so other web pages open in the
+browser cannot read what is rendered.
+
 ## Editor Configuration
 
 **✨Helix**

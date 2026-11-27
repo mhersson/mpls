@@ -2,7 +2,6 @@ package mpls
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 	"time"
 
@@ -41,13 +40,13 @@ func WorkspaceExecuteCommand(ctx *glsp.Context, param *protocol.ExecuteCommandPa
 				// MULTI-TAB MODE: Open at file-specific URL
 				relativePath := documentRegistry.GetRelativePath(doc.URI)
 				if relativePath != "" {
-					previewURL = fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
+					previewURL = previewServer.URL(relativePath)
 				} else {
-					previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
+					previewURL = previewServer.URL("/")
 				}
 			} else {
 				// SINGLE-PAGE MODE: Always open at root
-				previewURL = fmt.Sprintf("http://localhost:%d/", previewServer.Port)
+				previewURL = previewServer.URL("/")
 			}
 
 			// Open browser
