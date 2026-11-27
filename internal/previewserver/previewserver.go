@@ -8,7 +8,9 @@ import (
 	"html"
 	"io/fs"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,6 +18,7 @@ import (
 	"runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +33,16 @@ import (
 // Current version of bpmn-js used: 18.31.1 (https://cdn.jsdelivr.net/npm/bpmn-js@18.31.1/dist/)
 //   web/bpmn holds dist/bpmn-navigated-viewer.production.min.js, dist/assets/{bpmn-js,diagram-js}.css and LICENSE,
 //   unmodified. The bpmn-js license forbids removing or changing its bpmn.io watermark code.
+
+const (
+	// listenHost is the address the preview server listens on: the loopback
+	// interface alone, so other machines on the network cannot reach it.
+	listenHost = "127.0.0.1"
+	// browserHost is the host the browser is opened at, and the one web/ws.js
+	// connects to. Where localhost also resolves to ::1, browsers fall back to
+	// listenHost.
+	browserHost = "localhost"
+)
 
 var (
 	Browser              string
@@ -227,7 +240,7 @@ func New() *Server {
 	indexHTML = fmt.Sprintf(indexHTML, theme, mermaidTheme)
 
 	srv := &http.Server{
-		Addr:        fmt.Sprintf(":%d", port),
+		Addr:        net.JoinHostPort(listenHost, strconv.Itoa(port)),
 		ReadTimeout: time.Second * 5,
 	}
 
@@ -236,6 +249,30 @@ func New() *Server {
 		InitialContent: indexHTML,
 		Port:           port,
 	}
+}
+
+// URL returns the address the browser is opened at for path, which is
+// either empty or starts with a slash.
+func (s *Server) URL(path string) string {
+	return fmt.Sprintf("http://%s:%d%s", browserHost, s.Port, path)
+}
+
+// isPreviewOrigin reports whether origin, the Origin header of a request, is
+// the address the preview's own pages are served from.
+func isPreviewOrigin(origin string, port int) bool {
+	u, err := url.Parse(origin)
+	if err != nil || u.Scheme != "http" {
+		return false
+	}
+
+	originPort := u.Port()
+	if originPort == "" {
+		originPort = "80"
+	}
+
+	host := strings.ToLower(u.Hostname())
+
+	return originPort == strconv.Itoa(port) && (host == browserHost || host == listenHost)
 }
 
 func (s *Server) SetWorkspaceRoot(root string) {
@@ -371,7 +408,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/styles.css", handleResponse("text/css", stylesCSS))
 	mux.HandleFunc("/katex.min.css", handleResponse("text/css", katexMinCSS))
 	mux.HandleFunc("/mermaid.min.js", handleResponse("application/javascript", mermaid))
-	mux.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, s.Port)))
+	mux.HandleFunc("/ws.js", handleResponse("application/javascript", fmt.Sprintf(websocketJS, browserHost, s.Port)))
 	mux.HandleFunc("/presentation.js", handleResponse("application/javascript", presentationJS))
 	mux.HandleFunc("/presentation.css", handleResponse("text/css", presentationCSS))
 
@@ -391,7 +428,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 		mux.Handle(path, bpmnAssets)
 	}
 
-	mux.HandleFunc("/ws", handleWebSocket)
+	mux.HandleFunc("/ws", s.handleWebSocket)
 
 	// Dynamic route handler for markdown files and root path
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -515,16 +552,18 @@ func handleResponse(contentType, response string) http.HandlerFunc {
 	}
 }
 
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	wsupgrader := websocket.Upgrader{
-		CheckOrigin: func(_ *http.Request) bool {
-			return true // allow all origins
+		// Only the preview's own pages may connect, so that other web pages
+		// open in the browser cannot read what is rendered.
+		CheckOrigin: func(r *http.Request) bool {
+			return isPreviewOrigin(r.Header.Get("Origin"), s.Port)
 		},
 	}
 
+	// On failure, Upgrade has already replied with an HTTP error.
 	conn, err := wsupgrader.Upgrade(w, r, nil)
 	if err != nil {
-		http.Error(w, "Could not open websocket connection", http.StatusBadRequest)
 		fmt.Fprintf(os.Stderr, "%s error could not open websocket connection: %v\n", logTime(), err)
 
 		return

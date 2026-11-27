@@ -131,7 +131,7 @@ Example:
 		// Start server in background
 		go server.Start()
 
-		url := fmt.Sprintf("http://localhost:%d", server.Port)
+		url := server.URL("")
 		fmt.Printf("Demo server running at %s (theme: %s)\n", url, previewserver.Theme)
 
 		// Open browser unless --no-auto

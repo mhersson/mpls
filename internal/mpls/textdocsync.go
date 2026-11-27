@@ -1,7 +1,6 @@
 package mpls
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -65,7 +64,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 
 	if previewserver.EnableTabs {
 		// MULTI-TAB MODE: Open new browser tab at file-specific URL
-		previewURL := fmt.Sprintf("http://localhost:%d%s", previewServer.Port, relativePath)
+		previewURL := previewServer.URL(relativePath)
 
 		err = previewserver.Openbrowser(previewURL, previewserver.Browser)
 		if err != nil {
@@ -83,7 +82,7 @@ func TextDocumentDidOpen(ctx *glsp.Context, params *protocol.DidOpenTextDocument
 		// SINGLE-PAGE MODE: Update existing preview or open at root
 		if !previewserver.HasClients() {
 			// No browser open yet - open at root
-			previewURL := fmt.Sprintf("http://localhost:%d/", previewServer.Port)
+			previewURL := previewServer.URL("/")
 
 			err = previewserver.Openbrowser(previewURL, previewserver.Browser)
 			if err != nil {

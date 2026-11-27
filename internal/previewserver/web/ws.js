@@ -1069,7 +1069,7 @@
   // ==========================================================================
 
   function init() {
-    const ws = new WebSocket("ws://localhost:%d/ws");
+    const ws = new WebSocket("ws://%s:%d/ws");
 
     modal.init();
     printing.init();
